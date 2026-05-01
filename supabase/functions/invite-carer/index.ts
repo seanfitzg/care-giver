@@ -2,7 +2,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const REDIRECT_TO = 'caregiver://setup';
 
-Deno.serve(async (req) => {
+export async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -17,17 +17,6 @@ Deno.serve(async (req) => {
     return json({ error: 'Missing Authorization header' }, 401);
   }
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-  // Client scoped to the calling user — used to verify their role.
-  const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
-    global: { headers: { Authorization: authHeader } },
-  });
-
-  // Service-role client — used for the admin invite API.
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
   const { email, role, care_recipient_id } = await req.json() as {
     email: string;
     role: 'senior_carer' | 'carer';
@@ -40,6 +29,17 @@ Deno.serve(async (req) => {
   if (!['senior_carer', 'carer'].includes(role)) {
     return json({ error: 'role must be senior_carer or carer' }, 400);
   }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+  // Client scoped to the calling user — used to verify their role.
+  const callerClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    global: { headers: { Authorization: authHeader } },
+  });
+
+  // Service-role client — used for the admin invite API.
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   // Verify the caller is an admin for this care_recipient.
   const { data: isAdmin, error: roleCheckError } = await callerClient
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   }
 
   return json({ success: true, user_id: invitedUserId });
-});
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -85,3 +85,5 @@ function json(body: unknown, status = 200) {
     },
   });
 }
+
+Deno.serve(handler);

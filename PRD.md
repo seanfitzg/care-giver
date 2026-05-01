@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Parents and carers of children with complex medical needs must coordinate medication schedules, PEG feeding sessions, and therapy activities across multiple caregivers throughout the day. There is no shared, real-time record of what has been done, what is overdue, and who is currently responsible. Missed medications, incorrect feeding schedules, or lack of visibility into care history create serious risk for the child and stress for the family.
+Families and carers supporting a person who requires full-time care — whether a child, an adult with serious disabilities, or an elderly person — must coordinate medication schedules, feeding sessions, therapy activities, and other routines across multiple caregivers throughout the day. There is no shared, real-time record of what has been done, what is overdue, and who is currently responsible. Missed medications, incorrect feeding schedules, or lack of visibility into care history create serious risk for the care recipient and stress for those responsible for their care.
 
 ## Solution
 
@@ -16,7 +16,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 ## User Stories
 
 ### Authentication & Onboarding
-1. As an admin, I want to create a care recipient profile, so that all schedules and logs are scoped to my child.
+1. As an admin, I want to create a care recipient profile, so that all schedules and logs are scoped to the person in my care.
 2. As an admin, I want to invite carers by email, so that they can access the app without me sharing credentials.
 3. As an admin, I want to assign a role (Senior Carer or Carer) when inviting someone, so that access levels are set from the start.
 4. As an invited carer, I want to receive an email with a secure setup link, so that I can create my account and access the app.
@@ -24,7 +24,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 6. As any user, I want to log in securely with my email and password, so that care records are protected.
 
 ### Duty Management
-7. As a carer, I want to check in when I arrive, so that I start receiving notifications for the child I am caring for.
+7. As a carer, I want to check in when I arrive, so that I start receiving notifications for the care recipient I am caring for.
 8. As a carer, I want to check out when I leave, so that I stop receiving notifications after my shift.
 9. As an admin, I want to always be considered on-duty without checking in, so that I never miss a notification.
 10. As an admin, I want to see who is currently on duty, so that I know which carers are actively responsible.
@@ -37,7 +37,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 15. As an admin or senior carer, I want to set a per-medication overdue window, so that the system accounts for medications with different time tolerances.
 16. As an admin or senior carer, I want to set a per-medication missed threshold, so that a dose is marked missed only after an appropriate delay.
 17. As an admin or senior carer, I want to create a feeding schedule with a configurable interval between sessions, so that the daily feed count and timing match clinical guidance.
-18. As an admin or senior carer, I want to set the bolus rest duration (e.g. 20 or 25 minutes) per feeding schedule, so that the countdown timer matches the protocol prescribed for this child.
+18. As an admin or senior carer, I want to set the bolus rest duration (e.g. 20 or 25 minutes) per feeding schedule, so that the countdown timer matches the protocol prescribed for this care recipient.
 19. As an admin or senior carer, I want to configure a generic scheduled activity (e.g. stander time) with a time and duration, so that therapy tasks are also tracked.
 20. As an admin or senior carer, I want to edit or delete any scheduled item, so that the schedule stays accurate as care needs change.
 21. As an admin or senior carer, I want to set the overdue and missed windows for feeding sessions and activities independently, so that flexibility matches clinical guidance.
@@ -46,19 +46,19 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 22. As an on-duty carer, I want to start a guided feeding session, so that I am walked through each bolus and rest period.
 23. As an on-duty carer, I want to see a countdown timer for the configured rest period (20 or 25 minutes) between bolus rounds, so that I know when to resume feeding.
 24. As an on-duty carer, I want the rest duration to reflect the value set in the feeding schedule, so that I follow the correct protocol without having to remember it.
-25. As an on-duty carer, I want to skip the rest period early if the child is ready, so that I am not forced to wait for the timer when it is clinically appropriate to proceed.
+25. As an on-duty carer, I want to skip the rest period early if the care recipient is ready, so that I am not forced to wait for the timer when it is clinically appropriate to proceed.
 26. As an on-duty carer, I want to record the start time of a feeding session automatically, so that I do not need to enter it manually.
 27. As an on-duty carer, I want to see an elapsed-time counter during an active session, so that I can track how long the overall feed is taking.
 28. As an on-duty carer, I want the number of bolus rounds completed to be recorded when I end a session, so that the log shows how much of the feed was given.
 29. As an on-duty carer, I want to record the end time of a feeding session when I mark it complete, so that the full duration is captured.
-30. As an on-duty carer, I want to add a note to a feeding session, so that I can record if a feed was incomplete or the child showed discomfort.
+30. As an on-duty carer, I want to add a note to a feeding session, so that I can record if a feed was incomplete or the care recipient showed discomfort.
 31. As an on-duty carer, I want the feeding session log to record which carer administered it, so that there is an accurate audit trail.
 32. As an on-duty carer, I want to abandon a feeding session with a confirmation step, so that an incomplete session is recorded and I am not returned to the timeline by accident.
 
 ### Medication Recording
 33. As an on-duty carer, I want to mark a scheduled medication as given, so that other carers know it has been administered.
 34. As an on-duty carer, I want to record an as-needed medication at any time, so that ad-hoc doses are always captured.
-35. As an on-duty carer, I want to add a note when recording any medication, so that I can capture context (e.g. child refused, partial dose).
+35. As an on-duty carer, I want to add a note when recording any medication, so that I can capture context (e.g. refused, partial dose).
 36. As any user, I want to see which carer recorded each medication event, so that accountability is clear.
 
 ### Activity Recording
@@ -100,8 +100,8 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 63. As an on-duty carer using the web app, I want to receive browser push notifications when a task is due, so that I am reminded even when the browser tab is in the background.
 
 ### Multi-Tenancy
-64. As an admin, I want my family's data to be completely isolated from other families using the app, so that privacy is maintained.
-65. As an admin, I want to set up a care recipient profile with a name and date of birth, so that the app is personalised.
+64. As an admin, I want my care recipient's data to be completely isolated from other accounts using the app, so that privacy is maintained.
+65. As an admin, I want to set up a care recipient profile with a name and date of birth, so that the app is personalised to the person in my care.
 
 ---
 
@@ -251,7 +251,7 @@ Good tests verify external behaviour, not implementation details. A test should 
 
 ## Further Notes
 
-- The app is designed for a single child initially but architected for multi-tenancy from day one, so other families can use it later.
+- The app is designed for a single care recipient per account initially but architected for multi-tenancy from day one, so it can serve families caring for a child, an adult with disabilities, or an elderly person.
 - Row-level security in Supabase is the primary data isolation mechanism — this must be thoroughly reviewed before any public release.
 - The missed-event background job (Edge Function) is a critical piece of infrastructure; if it fails silently, the audit log will be incomplete.
 - The number of daily feeding sessions is determined entirely by the schedule (e.g. 3 or 4 per day) and is not hardcoded in the app. The admin configures this via scheduled feeding items.

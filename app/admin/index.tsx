@@ -25,24 +25,9 @@ type CarerRow = {
 
 async function fetchCarers(careRecipientId: string): Promise<CarerRow[]> {
   const { data, error } = await supabase
-    .from('user_roles')
-    .select('id, user_id, role')
-    .eq('care_recipient_id', careRecipientId);
+    .rpc('get_carers_with_emails', { p_care_recipient_id: careRecipientId });
   if (error) throw error;
-
-  // Fetch emails via a public-safe RPC rather than querying auth.users directly.
-  // Falls back to showing the user_id if unavailable.
-  const rows: CarerRow[] = await Promise.all(
-    (data ?? []).map(async (row) => {
-      const { data: profile } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('user_id', row.user_id)
-        .single();
-      return { ...row, email: profile ? null : null };
-    }),
-  );
-  return rows;
+  return (data ?? []) as CarerRow[];
 }
 
 export default function AdminScreen() {
