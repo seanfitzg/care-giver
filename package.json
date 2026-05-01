@@ -14,6 +14,11 @@
     "dev": "run-p supabase:start start"
   },
   "dependencies": {
+    "@effect/cluster": "^0.58.2",
+    "@effect/experimental": "^0.60.0",
+    "@effect/rpc": "^0.75.1",
+    "@effect/sql": "^0.51.1",
+    "@effect/typeclass": "^0.40.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.46.0",
     "@tanstack/react-query": "^5.62.0",
@@ -31,6 +36,7 @@
     "react-native-web": "~0.21.0"
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "^0.5.7",
     "@babel/core": "^7.24.0",
     "@types/react": "^19.2.0",
     "eslint": "^8.57.0",
