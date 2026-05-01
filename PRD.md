@@ -6,7 +6,7 @@ Parents and carers of children with complex medical needs must coordinate medica
 
 ## Solution
 
-A multi-tenant mobile and web application that gives families a shared, real-time care coordination tool. The admin (parent) configures a schedule of medications, feeding sessions, and activities. On-duty carers receive push notifications and in-app alerts when tasks are due. Every action is logged against the carer who performed it, creating a full, auditable care history. Carers check in and out of duty, ensuring notifications are routed only to the person currently responsible.
+A multi-tenant mobile app and dedicated web portal that gives families a shared, real-time care coordination tool. The admin (parent) configures a schedule of medications, feeding sessions, and activities. On-duty carers receive push notifications and in-app alerts when tasks are due. Every action is logged against the carer who performed it, creating a full, auditable care history. Carers check in and out of duty, ensuring notifications are routed only to the person currently responsible.
 
 ## User Stories
 
@@ -90,6 +90,10 @@ A multi-tenant mobile and web application that gives families a shared, real-tim
 58. As a carer, I want to use the app on my iPhone, so that I can act on reminders while moving around the house.
 59. As a carer, I want to use the app on my Android phone, so that I am not required to own an Apple device.
 60. As an admin, I want to use the app on an iPad, so that I have a larger screen for reviewing the schedule and care history.
+61. As an admin or carer, I want to access a dedicated web portal from a desktop or laptop browser, so that I can coordinate care without needing a mobile device.
+62. As an admin, I want schedule management and history review to be optimised for desktop use in the web portal, so that managing complex schedules is easier on a larger screen.
+63. As an on-duty carer, I want to receive web push notifications in the browser, so that I am reminded of due tasks even when I am using the portal on a desktop.
+64. As any user, I want my login session to work consistently between the mobile app and the web portal, so that I do not need separate credentials.
 
 ### Multi-Tenancy
 61. As an admin, I want my family's data to be completely isolated from other families using the app, so that privacy is maintained.
@@ -140,8 +144,8 @@ A multi-tenant mobile and web application that gives families a shared, real-tim
 - Missed events are written by a scheduled background job (Supabase Edge Function) that runs every minute and flags items past their missed threshold with no corresponding completion event.
 
 **Notification Service**
-- Expo Push Notifications used for mobile; web push for browser.
-- Device tokens stored in a `push_tokens` table, linked to `user_id`.
+- Expo Push Notifications for mobile; Web Push API (service worker) for the web portal.
+- Device tokens stored in a `push_tokens` table, linked to `user_id`, with a `token_type` column (`expo` or `web`) so the dispatch Edge Function uses the correct service.
 - Notifications dispatched via a Supabase Edge Function triggered on a schedule (every minute).
 - At dispatch time, the function resolves on-duty carers, finds due items, and sends to their registered tokens.
 - In-app alerts are driven by a Supabase Realtime subscription on the `event_log` and `scheduled_items` tables.
@@ -165,10 +169,11 @@ A multi-tenant mobile and web application that gives families a shared, real-tim
 - The `bulk_confirmed` flag is a boolean column on both `event_log` and `feeding_sessions`; it is nullable/false for all individually recorded events.
 
 ### Architecture
-- **Frontend**: React Native + Expo (TypeScript), targeting iPhone, iPad, and Android. The UI must be usable on all three form factors — iPad layout should make good use of the larger screen rather than simply scaling the phone layout. PWA support via Expo Web.
-- **Backend**: Supabase (Postgres, Auth, Realtime, Edge Functions, Row-Level Security).
-- **Push Notifications**: Expo Notification Service.
-- **State Management**: React Query for server state, React Context for auth/duty state.
+- **Mobile app**: React Native + Expo (TypeScript), targeting iPhone, iPad, and Android. iPad layout should make good use of the larger screen rather than simply scaling the phone layout.
+- **Web portal**: A separate React (TypeScript) application sharing the same Supabase backend. It is a dedicated web app optimised for desktop/laptop browsers — not Expo Web or a mobile web view. It must reach feature parity with the mobile app: timeline, duty management, schedule management, history log, feeding session runner, and all recording flows.
+- **Backend**: Supabase (Postgres, Auth, Realtime, Edge Functions, Row-Level Security). The same schema, RLS policies, and Edge Functions serve both frontends.
+- **Push Notifications**: Expo Notification Service for mobile; Web Push API (service worker + browser permission) for the web portal. Device token registration must distinguish token type so the Edge Function dispatches to the correct service.
+- **State Management**: React Query for server state, React Context for auth/duty state (both frontends).
 
 ### Schema Overview
 - `care_recipients` — root tenant
@@ -228,6 +233,8 @@ Good tests verify external behaviour, not implementation details. A test should 
 
 ## Out of Scope
 
+- Native mobile push from the web portal (web portal uses Web Push API only, not Expo)
+- Mobile-specific form factors (the web portal is desktop-first; it is not required to work well on a mobile browser)
 - Offline mode / local-first sync
 - Export of care records (PDF, CSV)
 - SMS or email escalation for unacknowledged notifications
@@ -241,6 +248,8 @@ Good tests verify external behaviour, not implementation details. A test should 
 
 ## Further Notes
 
+- Both the mobile app and the web portal are first-class platforms. Any feature built for one must be considered for the other. Architecture and data model decisions must not bake in mobile-only assumptions.
+- The web portal is a separate React (TypeScript) codebase — not Expo Web. Shared logic (validation, schedule calculations, types) should be extracted into a shared package if practical.
 - The app is designed for a single child initially but architected for multi-tenancy from day one, so other families can use it later.
 - Row-level security in Supabase is the primary data isolation mechanism — this must be thoroughly reviewed before any public release.
 - The missed-event background job (Edge Function) is a critical piece of infrastructure; if it fails silently, the audit log will be incomplete.
