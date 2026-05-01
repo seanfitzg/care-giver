@@ -49,23 +49,22 @@ $$;
 
 SELECT tests.set_auth_user(current_setting('tests.admin_id')::uuid);
 
+CREATE TEMP TABLE carer_results AS
+  SELECT * FROM get_carers_with_emails(current_setting('tests.cr_id')::uuid);
+
 SELECT is(
-  (SELECT count(*)::int FROM get_carers_with_emails(current_setting('tests.cr_id')::uuid)),
+  (SELECT count(*)::int FROM carer_results),
   3,
   'admin gets all 3 carers from get_carers_with_emails'
 );
 
 SELECT ok(
-  (SELECT count(*)::int FROM get_carers_with_emails(current_setting('tests.cr_id')::uuid)
-   WHERE email IS NOT NULL) = 3,
+  (SELECT count(*)::int FROM carer_results WHERE email IS NOT NULL) = 3,
   'all returned rows have non-null emails'
 );
 
 SELECT ok(
-  EXISTS (
-    SELECT 1 FROM get_carers_with_emails(current_setting('tests.cr_id')::uuid)
-    WHERE email = 'admin@test.local'
-  ),
+  EXISTS (SELECT 1 FROM carer_results WHERE email = 'admin@test.local'),
   'admin@test.local appears in results with correct email'
 );
 

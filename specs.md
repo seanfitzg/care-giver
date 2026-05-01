@@ -1,19 +1,19 @@
 # care-giver specifications
 
-I am a parent that cares for a child with serious and complicated medical needs. He receives medicine at certain times during the day. His food and water is fed through a PEG.
+care-giver is an application for anyone who requires full-time care — a child, an adult with serious disabilities, or an elderly person. The person receiving care may have complex medical needs such as scheduled medications and assisted feeding (e.g. via PEG), or simpler routines that still require consistent monitoring across a team of carers.
 
 ## What is required
 
-I need an application that can record and remind carers of his needs throughout the day.
+An application that records care events and reminds carers of the care recipient's needs throughout the day.
 
-- He needs medication at certain times of the day. Remind the carer that this needs to occur.
-- He needs to be fed 3 times a day. Remind the carer that this needs to occur.
-- The carer needs to be able to enter his needs into a UI.
+- The care recipient may need medication at certain times of the day. Remind the carer that this needs to occur.
+- The care recipient may need to be fed at scheduled intervals. Remind the carer that this needs to occur.
+- The carer needs to be able to enter care events into a UI.
 - The UI needs to run on iOS and Android devices.
 - The UI needs to be accessible on a dedicated web page designed for desktop browsers — not just a mobile app ported to web.
-- Multiple carers need to be able to access his needs.
-- When he is fed, the feed needs to be given with 20 or 25 minute breaks between each feed.
-- Other things need to be scheduled as well. Stander time, etc.
+- Multiple carers need to be able to access the care recipient's needs.
+- When a feed is given, rest intervals between boluses need to be enforced (e.g. 20 or 25 minute breaks).
+- Other activities need to be scheduled as well (e.g. stander time, physiotherapy).
 - This needs to work on iPhone, Android, and iPad.
 
 ## Platform decisions
