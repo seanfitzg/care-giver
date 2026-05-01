@@ -85,7 +85,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ----------------------------------------------------------------
 
 INSERT INTO public.care_recipients (id, name, date_of_birth)
-VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'Dev Child', '2020-06-15')
+VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'Dev Person', '2020-06-15')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------------------------------------------
