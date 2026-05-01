@@ -1,4 +1,16 @@
 .claude/settings.local.json
 node_modules/
+.expo/
+dist/
+web-build/
 .env
 .env.local
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+expo-env.d.ts

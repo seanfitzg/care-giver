@@ -1,0 +1,2 @@
+-- Seed data for local development
+-- Add development fixtures here as the schema evolves
