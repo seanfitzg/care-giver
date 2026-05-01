@@ -6,7 +6,12 @@ Parents and carers of children with complex medical needs must coordinate medica
 
 ## Solution
 
-A multi-tenant mobile and web application that gives families a shared, real-time care coordination tool. The admin (parent) configures a schedule of medications, feeding sessions, and activities. On-duty carers receive push notifications and in-app alerts when tasks are due. Every action is logged against the carer who performed it, creating a full, auditable care history. Carers check in and out of duty, ensuring notifications are routed only to the person currently responsible.
+A multi-tenant care coordination platform delivered as two clients sharing a single Supabase backend:
+
+- **Mobile app** (React Native + Expo) — the primary tool for on-duty carers. Used on the go during a shift on iPhone, Android, and iPad.
+- **Web app** (Next.js) — a desktop-first interface better suited to admin tasks: managing the care schedule, reviewing the full care history, and managing the carer team.
+
+The admin (parent) configures a schedule of medications, feeding sessions, and activities. On-duty carers receive push notifications and in-app alerts when tasks are due. Every action is logged against the carer who performed it, creating a full, auditable care history. Carers check in and out of duty, ensuring notifications are routed only to the person currently responsible.
 
 ## User Stories
 
@@ -90,10 +95,13 @@ A multi-tenant mobile and web application that gives families a shared, real-tim
 58. As a carer, I want to use the app on my iPhone, so that I can act on reminders while moving around the house.
 59. As a carer, I want to use the app on my Android phone, so that I am not required to own an Apple device.
 60. As an admin, I want to use the app on an iPad, so that I have a larger screen for reviewing the schedule and care history.
+61. As an admin, I want to use a dedicated web app on a desktop browser, so that I have a full-featured interface for managing the schedule, reviewing care history, and managing the carer team without needing my phone.
+62. As a carer, I want to use the web app on any desktop browser, so that I can record care events and check the timeline without installing anything.
+63. As an on-duty carer using the web app, I want to receive browser push notifications when a task is due, so that I am reminded even when the browser tab is in the background.
 
 ### Multi-Tenancy
-61. As an admin, I want my family's data to be completely isolated from other families using the app, so that privacy is maintained.
-62. As an admin, I want to set up a care recipient profile with a name and date of birth, so that the app is personalised.
+64. As an admin, I want my family's data to be completely isolated from other families using the app, so that privacy is maintained.
+65. As an admin, I want to set up a care recipient profile with a name and date of birth, so that the app is personalised.
 
 ---
 
@@ -165,10 +173,11 @@ A multi-tenant mobile and web application that gives families a shared, real-tim
 - The `bulk_confirmed` flag is a boolean column on both `event_log` and `feeding_sessions`; it is nullable/false for all individually recorded events.
 
 ### Architecture
-- **Frontend**: React Native + Expo (TypeScript), targeting iPhone, iPad, and Android. The UI must be usable on all three form factors — iPad layout should make good use of the larger screen rather than simply scaling the phone layout. PWA support via Expo Web.
-- **Backend**: Supabase (Postgres, Auth, Realtime, Edge Functions, Row-Level Security).
-- **Push Notifications**: Expo Notification Service.
-- **State Management**: React Query for server state, React Context for auth/duty state.
+- **Mobile app**: React Native + Expo (TypeScript), targeting iPhone, iPad, and Android. The UI must be usable on all three form factors — iPad layout should make good use of the larger screen rather than simply scaling the phone layout.
+- **Web app**: Next.js 15 (App Router, TypeScript, Tailwind CSS) in a `web/` subdirectory. Designed for desktop browsers. Uses `@supabase/ssr` for cookie-based sessions and the PKCE flow for invite acceptance (rather than the implicit URL-fragment approach used natively). Both clients point at the same Supabase project.
+- **Backend**: Supabase (Postgres, Auth, Realtime, Edge Functions, Row-Level Security). No backend changes are required to support the web client — the same schema, RLS policies, and Edge Functions serve both platforms.
+- **Push Notifications**: Expo Push Notification Service for mobile (iOS and Android). Web Push API for browser notifications. The `invite-carer` Edge Function accepts a configurable `redirect_to` URL so the web app can supply an `https://` invite link instead of the native `caregiver://` scheme.
+- **State Management** (mobile): React Query for server state, React Context for auth/duty state.
 
 ### Schema Overview
 - `care_recipients` — root tenant
@@ -235,7 +244,8 @@ Good tests verify external behaviour, not implementation details. A test should 
 - Day-of-week medication schedules (daily recurrence only)
 - Individual bolus-level recording within a feeding session (volume per round, etc.)
 - Integration with external nursing or medical record systems
-- Billing, subscription management, or user self-registration (invite-only only)
+- Billing, subscription management, or user self-registration (invite-only)
+- A shared component library between the mobile and web clients (types are copied as needed; a shared package can be introduced later if duplication becomes a maintenance burden)
 
 ---
 
