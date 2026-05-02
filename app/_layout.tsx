@@ -8,7 +8,7 @@ import { DutyProvider } from '@/contexts/DutyContext';
 const queryClient = new QueryClient();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, careRecipientId } = useAuth();
   const segments = useSegments() as string[];
   const router = useRouter();
 
@@ -16,13 +16,22 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
     const onSetupScreen = segments[1] === 'setup';
+    const onCreateScreen = segments[1] === 'create-care-recipient';
 
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/login' as never);
-    } else if (session && inAuthGroup && !onSetupScreen) {
-      router.replace('/(tabs)');
+    if (!session) {
+      if (!inAuthGroup) router.replace('/(auth)/login' as never);
+      return;
     }
-  }, [session, loading, segments, router]);
+    // Invite setup flow — let it run without interference.
+    if (onSetupScreen) return;
+    // Authenticated but no care recipient — prompt to create one.
+    if (!careRecipientId) {
+      if (!onCreateScreen) router.replace('/(auth)/create-care-recipient' as never);
+      return;
+    }
+    // Fully authenticated — leave auth screens.
+    if (inAuthGroup) router.replace('/(tabs)' as never);
+  }, [session, loading, careRecipientId, segments, router]);
 
   if (loading) {
     return (

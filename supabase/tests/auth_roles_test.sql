@@ -3,6 +3,8 @@
 -- Requires: npx supabase db reset (seed data must be present)
 
 BEGIN;
+CREATE SCHEMA IF NOT EXISTS tests;
+GRANT USAGE ON SCHEMA tests TO authenticated, anon;
 SELECT plan(12);
 
 -- ============================================================
