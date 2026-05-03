@@ -1,10 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
+const TAB_TITLES: Record<string, string> = {
+  index: 'Today',
+  feed: 'Feed',
+  'on-duty': 'On Duty',
+  log: 'Log',
+};
+
 export default function TabLayout() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, careRecipientName } = useAuth();
 
   const adminHeaderRight = isAdmin
     ? () => (
@@ -18,11 +25,23 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={{
+      screenOptions={({ route }) => ({
         tabBarActiveTintColor: '#2563eb',
         headerShown: true,
         headerRight: adminHeaderRight,
-      }}
+        headerTitle: () => (
+          <View style={{ alignItems: 'center' }}>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827' }}>
+              {TAB_TITLES[route.name] ?? route.name}
+            </Text>
+            {careRecipientName ? (
+              <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>
+                {careRecipientName}
+              </Text>
+            ) : null}
+          </View>
+        ),
+      })}
     >
       <Tabs.Screen name="index" options={{ title: 'Today' }} />
       <Tabs.Screen name="feed" options={{ title: 'Feed' }} />

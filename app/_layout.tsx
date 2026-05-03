@@ -8,21 +8,32 @@ import { DutyProvider } from '@/contexts/DutyContext';
 const queryClient = new QueryClient();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { session, loading, careRecipientId } = useAuth();
   const segments = useSegments() as string[];
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    const onSetupScreen = segments[1] === 'setup';
+    const onInviteSetup = inAuthGroup && segments[1] === 'setup';
+    const inSetupGroup = segments[0] === '(setup)';
 
-    if (!session && !inAuthGroup) {
-      router.replace('/(auth)/login' as never);
-    } else if (session && inAuthGroup && !onSetupScreen) {
+    if (!session) {
+      if (!inAuthGroup) router.replace('/(auth)/login' as never);
+      return;
+    }
+
+    if (onInviteSetup) return;
+
+    if (!careRecipientId) {
+      if (!inSetupGroup) router.replace('/(setup)/create-recipient' as never);
+      return;
+    }
+
+    if (inAuthGroup || inSetupGroup) {
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments, router]);
+  }, [session, loading, segments, router, careRecipientId]);
 
   if (loading) {
     return (

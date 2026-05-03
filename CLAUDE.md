@@ -14,6 +14,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Supabase RLS is the primary multi-tenancy isolation mechanism — must be airtight
 - Consult `PRD.md` before implementing any feature
 
+**UI**
+Use the docs\care-giver-prototype.html wireframe as a guide to the UI.
+
 ## Architecture
 
 ```
