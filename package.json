@@ -11,8 +11,7 @@
     "type-check": "tsc --noEmit",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "dev": "run-p supabase:start start",
-    "sand": "npx tsx .sandcastle/main.mts"
+    "dev": "run-p supabase:start start"
   },
   "dependencies": {
     "@effect/cluster": "^0.58.2",
