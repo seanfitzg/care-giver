@@ -1,10 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, Tabs } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
-  const { isAdmin, careRecipientName } = useAuth();
+  const { isAdmin } = useAuth();
 
   const adminHeaderRight = isAdmin
     ? () => (
@@ -21,20 +21,7 @@ export default function TabLayout() {
       screenOptions={{
         tabBarActiveTintColor: '#2563eb',
         headerShown: true,
-        headerTitleAlign: 'center',
         headerRight: adminHeaderRight,
-        headerTitle: ({ children }) => (
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827' }}>
-              {children}
-            </Text>
-            {careRecipientName ? (
-              <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 1 }}>
-                {careRecipientName}
-              </Text>
-            ) : null}
-          </View>
-        ),
       }}
     >
       <Tabs.Screen name="index" options={{ title: 'Today' }} />
