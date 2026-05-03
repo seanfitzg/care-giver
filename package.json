@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
+    "supabase:clear-recipient": "supabase db execute --local --file supabase/clear-recipient.sql",
     "dev": "run-p supabase:start start"
   },
   "dependencies": {
