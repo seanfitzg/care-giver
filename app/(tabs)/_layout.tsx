@@ -11,7 +11,7 @@ const TAB_TITLES: Record<string, string> = {
 };
 
 export default function TabLayout() {
-  const { isAdmin, careRecipientName } = useAuth();
+  const { isAdmin, careRecipientName, signOut } = useAuth();
 
   const adminHeaderRight = isAdmin
     ? () => (
@@ -23,11 +23,18 @@ export default function TabLayout() {
       )
     : undefined;
 
+  const headerLeft = () => (
+    <Pressable style={{ marginLeft: 16 }} onPress={signOut} accessibilityLabel="Sign out">
+      <Ionicons name="log-out-outline" size={22} color="#374151" />
+    </Pressable>
+  );
+
   return (
     <Tabs
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: '#2563eb',
         headerShown: true,
+        headerLeft,
         headerRight: adminHeaderRight,
         headerTitle: () => (
           <View style={{ alignItems: 'center' }}>
