@@ -5,6 +5,9 @@
 BEGIN;
 SELECT plan(4);
 
+CREATE SCHEMA IF NOT EXISTS tests;
+GRANT USAGE ON SCHEMA tests TO authenticated, anon;
+
 -- ============================================================
 -- Helpers (duplicated from auth_roles_test.sql — pgTAP runs
 -- each file in its own transaction so helpers don't carry over)
@@ -27,6 +30,8 @@ BEGIN
   PERFORM set_config('role', 'anon', true);
 END;
 $$;
+
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO authenticated, anon;
 
 -- ============================================================
 -- Fixtures

@@ -5,6 +5,9 @@
 BEGIN;
 SELECT plan(12);
 
+CREATE SCHEMA IF NOT EXISTS tests;
+GRANT USAGE ON SCHEMA tests TO authenticated, anon;
+
 -- ============================================================
 -- Helpers
 -- ============================================================
@@ -27,6 +30,8 @@ BEGIN
   PERFORM set_config('role', 'anon', true);
 END;
 $$;
+
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO authenticated, anon;
 
 -- ============================================================
 -- Fixtures (from seed.sql)
