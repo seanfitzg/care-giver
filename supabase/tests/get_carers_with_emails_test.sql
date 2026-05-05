@@ -44,7 +44,7 @@ BEGIN
   PERFORM set_config('tests.carer_id',
     (SELECT id::text FROM auth.users WHERE email = 'carer@test.local'), false);
   PERFORM set_config('tests.cr_id',
-    (SELECT id::text FROM care_recipients WHERE name = 'Dev Person'), false);
+    (SELECT id::text FROM care_recipients WHERE name = 'Oscar'), false);
 END;
 $$;
 

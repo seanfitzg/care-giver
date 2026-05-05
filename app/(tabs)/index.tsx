@@ -1,23 +1,180 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  ActivityIndicator,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDuty } from '@/contexts/DutyContext';
+import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
+import type { ItemStatus, ItemType, TimelineItem } from '@/hooks/useTimeline';
+
+const TYPE_CONFIG: Record<
+  ItemType,
+  { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string; label: string }
+> = {
+  medication_scheduled: { icon: 'medkit-outline', color: '#2563eb', bg: '#eff6ff', label: 'Med' },
+  feeding: { icon: 'water-outline', color: '#d97706', bg: '#fffbeb', label: 'Feed' },
+  activity: { icon: 'walk-outline', color: '#16a34a', bg: '#f0fdf4', label: 'Activity' },
+};
+
+const STATUS_CONFIG: Record<ItemStatus, { label: string; color: string; bg: string }> = {
+  overdue: { label: 'Overdue', color: '#dc2626', bg: '#fef2f2' },
+  done: { label: 'Done', color: '#16a34a', bg: '#f0fdf4' },
+  missed: { label: 'Missed', color: '#7c3aed', bg: '#f5f3ff' },
+  upcoming: { label: 'Upcoming', color: '#6b7280', bg: '#f9fafb' },
+};
+
+function formatTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function TypeIcon({ type }: { type: ItemType }) {
+  const cfg = TYPE_CONFIG[type];
+  return (
+    <View style={[styles.typeIcon, { backgroundColor: cfg.bg }]}>
+      <Ionicons name={cfg.icon} size={16} color={cfg.color} />
+    </View>
+  );
+}
+
+function StatusBadge({ status }: { status: ItemStatus }) {
+  if (status === 'upcoming') return null;
+  const cfg = STATUS_CONFIG[status];
+  return (
+    <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
+      <Text style={[styles.statusBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+    </View>
+  );
+}
+
+function TaskCard({
+  item,
+  variant = 'default',
+}: {
+  item: TimelineItem;
+  variant?: 'default' | 'overdue';
+}) {
+  const isDone = item.status === 'done';
+  return (
+    <View
+      style={[styles.card, variant === 'overdue' && styles.cardOverdue, isDone && styles.cardDone]}
+    >
+      <TypeIcon type={item.type} />
+      <View style={styles.cardBody}>
+        <Text style={[styles.cardName, isDone && styles.cardNameDone]} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text style={styles.cardTime}>{formatTime(item.scheduledAt)}</Text>
+      </View>
+      <StatusBadge status={item.status} />
+    </View>
+  );
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderText}>{title}</Text>
+    </View>
+  );
+}
 
 export default function TodayScreen() {
-  const { isAdmin } = useAuth();
-  const { isOnDuty, loading, checkIn, checkOut } = useDuty();
+  const { isAdmin, careRecipientId } = useAuth();
+  const { isOnDuty, loading: dutyLoading, checkIn, checkOut } = useDuty();
+  const { items, isLoading, refetch } = useTimeline(careRecipientId);
+
+  const overdue = items.filter((i) => i.status === 'overdue');
+  const earlierToday = items.filter((i) => i.status === 'done' || i.status === 'missed');
+  const upcoming = items.filter((i) => i.status === 'upcoming');
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Today</Text>
-      <Text style={styles.placeholder}>Timeline view coming soon</Text>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
+      >
+        {/* Window label */}
+        <Text style={styles.windowLabel}>
+          Past {PAST_HOURS}h · Next {FUTURE_HOURS}h
+        </Text>
+
+        {/* Overdue section */}
+        {overdue.length > 0 && (
+          <View style={styles.overdueBanner}>
+            <Text style={styles.overdueBannerTitle}>
+              {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
+            </Text>
+            {overdue.map((item) => (
+              <TaskCard key={item.key} item={item} variant="overdue" />
+            ))}
+          </View>
+        )}
+
+        {/* Earlier today */}
+        {earlierToday.length > 0 && (
+          <>
+            <SectionHeader title="Earlier today" />
+            {earlierToday.map((item, idx) => (
+              <View key={item.key} style={styles.spineRow}>
+                <View style={styles.spineColumn}>
+                  <View
+                    style={[
+                      styles.spineDot,
+                      item.status === 'done' ? styles.spineDotDone : styles.spineDotMissed,
+                    ]}
+                  />
+                  {idx < earlierToday.length - 1 && <View style={styles.spineLine} />}
+                </View>
+                <View style={styles.cardWrapper}>
+                  <TaskCard item={item} />
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {/* Upcoming */}
+        {upcoming.length > 0 && (
+          <>
+            <SectionHeader title="Upcoming" />
+            {upcoming.map((item, idx) => (
+              <View key={item.key} style={styles.spineRow}>
+                <View style={styles.spineColumn}>
+                  <View style={[styles.spineDot, styles.spineDotUpcoming]} />
+                  {idx < upcoming.length - 1 && <View style={styles.spineLine} />}
+                </View>
+                <View style={styles.cardWrapper}>
+                  <TaskCard item={item} />
+                </View>
+              </View>
+            ))}
+          </>
+        )}
+
+        {items.length === 0 && <Text style={styles.empty}>No tasks in this window.</Text>}
+      </ScrollView>
 
       {!isAdmin && (
         <Pressable
           style={[styles.fab, isOnDuty ? styles.fabOut : styles.fabIn]}
           onPress={isOnDuty ? checkOut : checkIn}
-          disabled={loading}
+          disabled={dutyLoading}
         >
-          {loading ? (
+          {dutyLoading ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.fabText}>{isOnDuty ? 'Check out' : 'Check in'}</Text>
@@ -29,9 +186,80 @@ export default function TodayScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  title: { fontSize: 24, fontWeight: '600', marginBottom: 8 },
-  placeholder: { color: '#6b7280' },
+  container: { flex: 1, backgroundColor: '#f9fafb' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  scroll: { padding: 16, paddingBottom: 100 },
+  windowLabel: { fontSize: 11, color: '#9ca3af', textAlign: 'center', marginBottom: 12 },
+
+  overdueBanner: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  overdueBannerTitle: { fontSize: 12, fontWeight: '700', color: '#dc2626', marginBottom: 8 },
+
+  sectionHeader: { marginTop: 8, marginBottom: 6 },
+  sectionHeaderText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  spineRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10, marginBottom: 2 },
+  spineColumn: { alignItems: 'center', paddingTop: 14, width: 12 },
+  spineDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  spineDotDone: { backgroundColor: '#16a34a' },
+  spineDotMissed: { backgroundColor: '#7c3aed' },
+  spineDotUpcoming: { backgroundColor: '#d1d5db', borderWidth: 2, borderColor: '#d1d5db' },
+  spineLine: { width: 1, flex: 1, backgroundColor: '#e5e7eb', marginTop: 2 },
+  cardWrapper: { flex: 1, marginBottom: 8 },
+
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  cardOverdue: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#dc2626',
+    backgroundColor: '#fff',
+  },
+  cardDone: { opacity: 0.7 },
+  cardBody: { flex: 1, minWidth: 0 },
+  cardName: { fontSize: 14, fontWeight: '500', color: '#111827' },
+  cardNameDone: { color: '#6b7280' },
+  cardTime: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+
+  typeIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  statusBadge: {
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  statusBadgeText: { fontSize: 11, fontWeight: '600' },
+
+  empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
+
   fab: {
     position: 'absolute',
     bottom: 24,

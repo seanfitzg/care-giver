@@ -85,7 +85,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ----------------------------------------------------------------
 
 INSERT INTO public.care_recipients (id, name, date_of_birth)
-VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'Dev Person', '2020-06-15')
+VALUES ('aaaaaaaa-0000-0000-0000-000000000001', 'Oscar', '2020-06-15')
 ON CONFLICT (id) DO NOTHING;
 
 -- ----------------------------------------------------------------
@@ -140,5 +140,59 @@ INSERT INTO public.scheduled_items (
     'activity', 'Stander Time',
     '10:00', null, 30, 120, true, null,
     '00000000-0000-0000-0000-000000000001'
+  ),
+  -- Physio exercises — wide missed_threshold so it stays overdue most of the day
+  (
+    'bbbbbbbb-0000-0000-0000-000000000005',
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'activity', 'Physio Exercises',
+    '07:00', null, 10, 960, true, null,
+    '00000000-0000-0000-0000-000000000001'
   )
 ON CONFLICT (id) DO NOTHING;
+
+-- ----------------------------------------------------------------
+-- Event log — past events for today so the timeline isn't empty.
+-- Overdue status is computed client-side from schedule + current
+-- time; these entries represent items that were explicitly logged.
+-- ----------------------------------------------------------------
+
+INSERT INTO public.event_log (
+  care_recipient_id, event_type, scheduled_item_id, carer_id, occurred_at, status
+) VALUES
+  -- Morning Meds: explicitly missed
+  (
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'medication_scheduled',
+    'bbbbbbbb-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000002',
+    current_date + interval '8 hours 10 minutes',
+    'missed'
+  ),
+  -- PEG Feed (08:00 slot): completed
+  (
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'feeding',
+    'bbbbbbbb-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000002',
+    current_date + interval '8 hours 6 minutes',
+    'completed'
+  ),
+  -- Stander Time: missed
+  (
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'activity',
+    'bbbbbbbb-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000002',
+    current_date + interval '10 hours 25 minutes',
+    'missed'
+  ),
+  -- PEG Feed (12:00 slot): missed
+  (
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'feeding',
+    'bbbbbbbb-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000002',
+    current_date + interval '12 hours 8 minutes',
+    'missed'
+  );
