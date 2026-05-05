@@ -12,6 +12,9 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:clear-recipient": "supabase db execute --local --file supabase/clear-recipient.sql",
+    "test:db": "supabase test db",
+    "test:functions": "deno test --allow-env --allow-net --config supabase/functions/deno.json supabase/functions/",
+    "test": "run-s test:db test:functions",
     "dev": "run-p supabase:start start"
   },
   "dependencies": {
@@ -21,6 +24,7 @@
     "@effect/sql": "^0.51.1",
     "@effect/typeclass": "^0.40.0",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "8.6.0",
     "@supabase/supabase-js": "^2.46.0",
     "@tanstack/react-query": "^5.62.0",
     "expo": "~55.0.19",

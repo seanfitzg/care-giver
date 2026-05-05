@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { TimePicker } from '@/components/TimePicker';
 
 type ItemType = 'medication_scheduled' | 'feeding' | 'activity';
 
@@ -432,29 +433,15 @@ function ScheduledItemModal({
 
       {form.type !== 'feeding' && (
         <>
-          <FieldLabel>Time (HH:MM)</FieldLabel>
-          <TextInput
-            style={s.input}
-            value={form.time_of_day}
-            onChangeText={v => set({ time_of_day: v })}
-            placeholder="e.g. 08:00"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numbers-and-punctuation"
-          />
+          <FieldLabel>Time</FieldLabel>
+          <TimePicker value={form.time_of_day} onChange={v => set({ time_of_day: v })} />
         </>
       )}
 
       {form.type === 'feeding' && (
         <>
-          <FieldLabel>First session at (HH:MM, optional)</FieldLabel>
-          <TextInput
-            style={s.input}
-            value={form.time_of_day}
-            onChangeText={v => set({ time_of_day: v })}
-            placeholder="e.g. 07:00"
-            placeholderTextColor="#9ca3af"
-            keyboardType="numbers-and-punctuation"
-          />
+          <FieldLabel>First session at (optional)</FieldLabel>
+          <TimePicker value={form.time_of_day} onChange={v => set({ time_of_day: v })} />
           <FieldLabel>Interval between sessions (minutes)</FieldLabel>
           <TextInput
             style={s.input}
