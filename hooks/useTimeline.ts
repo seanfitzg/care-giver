@@ -1,0 +1,214 @@
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+
+export type ItemType = 'medication_scheduled' | 'feeding' | 'activity';
+export type ItemStatus = 'overdue' | 'done' | 'missed' | 'upcoming';
+
+export type TimelineItem = {
+  key: string;
+  scheduledItemId: string;
+  type: ItemType;
+  name: string;
+  scheduledAt: Date;
+  status: ItemStatus;
+  isCompulsory: boolean;
+};
+
+type ScheduledItemRow = {
+  id: string;
+  type: ItemType;
+  name: string;
+  time_of_day: string | null;
+  interval_minutes: number | null;
+  overdue_window_minutes: number;
+  missed_threshold_minutes: number;
+  is_compulsory: boolean;
+};
+
+type EventLogRow = {
+  id: string;
+  scheduled_item_id: string | null;
+  occurred_at: string;
+  status: 'completed' | 'missed' | 'skipped';
+};
+
+// Configurable window defaults — replace with per-user preferences once a
+// preferences table exists.
+export const PAST_HOURS = 2;
+export const FUTURE_HOURS = 6;
+
+function todayBounds() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function scheduledTimeToday(timeOfDay: string): Date {
+  const { start } = todayBounds();
+  const [h, m] = timeOfDay.split(':').map(Number);
+  return new Date(start.getTime() + (h * 60 + m) * 60_000);
+}
+
+function generateFeedingTimes(intervalMinutes: number): Date[] {
+  const { start, end } = todayBounds();
+  const times: Date[] = [];
+  let t = start.getTime();
+  while (t <= end.getTime()) {
+    times.push(new Date(t));
+    t += intervalMinutes * 60_000;
+  }
+  return times;
+}
+
+function computeStatus(
+  scheduledAt: Date,
+  scheduledItemId: string,
+  overdueWindow: number,
+  missedThreshold: number,
+  todayEvents: EventLogRow[],
+  now: Date,
+): ItemStatus {
+  const scheduledMs = scheduledAt.getTime();
+  const match = todayEvents.find((e) => {
+    if (e.scheduled_item_id !== scheduledItemId) return false;
+    const eMs = new Date(e.occurred_at).getTime();
+    return (
+      eMs >= scheduledMs - overdueWindow * 60_000 && eMs <= scheduledMs + missedThreshold * 60_000
+    );
+  });
+
+  if (match) return match.status === 'completed' ? 'done' : 'missed';
+
+  const nowMs = now.getTime();
+  if (nowMs > scheduledMs + missedThreshold * 60_000) return 'missed';
+  if (nowMs > scheduledMs + overdueWindow * 60_000) return 'overdue';
+  return 'upcoming';
+}
+
+export function buildTimelineItems(
+  scheduledItems: ScheduledItemRow[],
+  todayEvents: EventLogRow[],
+  now: Date,
+  pastHours = PAST_HOURS,
+  futureHours = FUTURE_HOURS,
+): TimelineItem[] {
+  const windowStart = new Date(now.getTime() - pastHours * 3_600_000);
+  const windowEnd = new Date(now.getTime() + futureHours * 3_600_000);
+  const items: TimelineItem[] = [];
+
+  for (const row of scheduledItems) {
+    const times: Date[] =
+      row.type === 'feeding' && row.interval_minutes
+        ? generateFeedingTimes(row.interval_minutes)
+        : row.time_of_day
+          ? [scheduledTimeToday(row.time_of_day)]
+          : [];
+
+    for (const scheduledAt of times) {
+      const status = computeStatus(
+        scheduledAt,
+        row.id,
+        row.overdue_window_minutes,
+        row.missed_threshold_minutes,
+        todayEvents,
+        now,
+      );
+
+      // Overdue items always appear; others are filtered to the window.
+      const inWindow =
+        status === 'overdue' || (scheduledAt >= windowStart && scheduledAt <= windowEnd);
+      if (!inWindow) continue;
+
+      items.push({
+        key: `${row.id}_${scheduledAt.getTime()}`,
+        scheduledItemId: row.id,
+        type: row.type,
+        name: row.name,
+        scheduledAt,
+        status,
+        isCompulsory: row.is_compulsory,
+      });
+    }
+  }
+
+  return items.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
+}
+
+async function fetchData(careRecipientId: string) {
+  const { start, end } = todayBounds();
+  const [{ data: items, error: itemsErr }, { data: events, error: eventsErr }] = await Promise.all([
+    supabase
+      .from('scheduled_items')
+      .select(
+        'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory',
+      )
+      .eq('care_recipient_id', careRecipientId),
+    supabase
+      .from('event_log')
+      .select('id, scheduled_item_id, occurred_at, status')
+      .eq('care_recipient_id', careRecipientId)
+      .gte('occurred_at', start.toISOString())
+      .lte('occurred_at', end.toISOString()),
+  ]);
+
+  if (itemsErr) throw itemsErr;
+  if (eventsErr) throw eventsErr;
+
+  return {
+    scheduledItems: (items ?? []) as ScheduledItemRow[],
+    todayEvents: (events ?? []) as EventLogRow[],
+  };
+}
+
+export function useTimeline(careRecipientId: string | null) {
+  const qc = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ['timeline', careRecipientId],
+    queryFn: () => fetchData(careRecipientId!),
+    enabled: !!careRecipientId,
+    refetchInterval: 60_000,
+  });
+
+  useEffect(() => {
+    if (!careRecipientId) return;
+
+    const channel = supabase
+      .channel(`timeline:${careRecipientId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'scheduled_items',
+          filter: `care_recipient_id=eq.${careRecipientId}`,
+        },
+        () => qc.invalidateQueries({ queryKey: ['timeline', careRecipientId] }),
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_log',
+          filter: `care_recipient_id=eq.${careRecipientId}`,
+        },
+        () => qc.invalidateQueries({ queryKey: ['timeline', careRecipientId] }),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [careRecipientId, qc]);
+
+  const now = new Date();
+  const items = query.data
+    ? buildTimelineItems(query.data.scheduledItems, query.data.todayEvents, now)
+    : [];
+
+  return { items, isLoading: query.isLoading, error: query.error, refetch: query.refetch };
+}

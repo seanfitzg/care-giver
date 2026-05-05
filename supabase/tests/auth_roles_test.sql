@@ -47,7 +47,7 @@ BEGIN
   SELECT id INTO v_admin_id  FROM auth.users WHERE email = 'admin@test.local';
   SELECT id INTO v_carer_id  FROM auth.users WHERE email = 'carer@test.local';
   SELECT id INTO v_senior_id FROM auth.users WHERE email = 'senior@test.local';
-  SELECT id INTO v_cr_id     FROM care_recipients WHERE name = 'Dev Person';
+  SELECT id INTO v_cr_id     FROM care_recipients WHERE name = 'Oscar';
 
   -- Store for use across test blocks.
   PERFORM set_config('tests.admin_id',  v_admin_id::text,  false);
@@ -68,7 +68,7 @@ SELECT ok(
       AND care_recipient_id = current_setting('tests.cr_id')::uuid
       AND role = 'admin'
   ),
-  'admin@test.local has admin role for Dev Person'
+  'admin@test.local has admin role for Oscar'
 );
 
 SELECT ok(
@@ -78,7 +78,7 @@ SELECT ok(
       AND care_recipient_id = current_setting('tests.cr_id')::uuid
       AND role = 'carer'
   ),
-  'carer@test.local has carer role for Dev Person'
+  'carer@test.local has carer role for Oscar'
 );
 
 SELECT ok(
@@ -88,7 +88,7 @@ SELECT ok(
       AND care_recipient_id = current_setting('tests.cr_id')::uuid
       AND role = 'senior_carer'
   ),
-  'senior@test.local has senior_carer role for Dev Person'
+  'senior@test.local has senior_carer role for Oscar'
 );
 
 -- ============================================================
