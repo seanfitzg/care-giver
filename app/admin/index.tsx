@@ -144,22 +144,20 @@ export default function AdminScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.headerActions}>
+        <Pressable style={styles.inviteButton} onPress={() => setInviteModalOpen(true)}>
+          <Text style={styles.inviteButtonText}>+ Invite carer</Text>
+        </Pressable>
+        <Link href={'/admin/schedule' as never} asChild>
+          <Pressable style={styles.scheduleButton}>
+            <Text style={styles.scheduleButtonText}>Manage schedule</Text>
+          </Pressable>
+        </Link>
+      </View>
       <FlatList
         data={carers}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <View style={styles.headerActions}>
-            <Pressable style={styles.inviteButton} onPress={() => setInviteModalOpen(true)}>
-              <Text style={styles.inviteButtonText}>+ Invite carer</Text>
-            </Pressable>
-            <Link href={'/admin/schedule' as never} asChild>
-              <Pressable style={styles.scheduleButton}>
-                <Text style={styles.scheduleButtonText}>Manage schedule</Text>
-              </Pressable>
-            </Link>
-          </View>
-        }
         renderItem={({ item }) => {
           const isSelf = item.user_id === user?.id;
           return (
@@ -280,7 +278,7 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 12, color: '#374151' },
   revokeButton: { borderColor: '#fca5a5' },
   revokeText: { color: '#dc2626' },
-  headerActions: { gap: 10, marginBottom: 8 },
+  headerActions: { gap: 10, padding: 16, paddingBottom: 0 },
   scheduleButton: {
     backgroundColor: '#fff',
     borderRadius: 8,
