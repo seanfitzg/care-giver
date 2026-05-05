@@ -55,3 +55,4 @@ npx supabase db diff     # generate migration from schema diff
 - Environment variables are prefixed `EXPO_PUBLIC_` so they're available client-side
 - All new Supabase tables must have RLS enabled with explicit policies — never rely on the default-deny being enough; add positive grants too
 - Append-only event log — never update or delete event records
+- Always format any .js or .tsx files with the prettier formatter.
