@@ -17,7 +17,7 @@ export async function handler(req: Request): Promise<Response> {
     return json({ error: 'Missing Authorization header' }, 401);
   }
 
-  const { email, role, care_recipient_id } = await req.json() as {
+  const { email, role, care_recipient_id } = (await req.json()) as {
     email: string;
     role: 'senior_carer' | 'carer';
     care_recipient_id: string;
@@ -42,8 +42,9 @@ export async function handler(req: Request): Promise<Response> {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
   // Verify the caller is an admin for this care_recipient.
-  const { data: isAdmin, error: roleCheckError } = await callerClient
-    .rpc('is_admin_for', { p_care_recipient_id: care_recipient_id });
+  const { data: isAdmin, error: roleCheckError } = await callerClient.rpc('is_admin_for', {
+    p_care_recipient_id: care_recipient_id,
+  });
 
   if (roleCheckError || !isAdmin) {
     return json({ error: 'Forbidden: caller is not an admin for this care recipient' }, 403);
@@ -70,7 +71,10 @@ export async function handler(req: Request): Promise<Response> {
     );
 
   if (roleInsertError) {
-    return json({ error: `User invited but role assignment failed: ${roleInsertError.message}` }, 500);
+    return json(
+      { error: `User invited but role assignment failed: ${roleInsertError.message}` },
+      500,
+    );
   }
 
   return json({ success: true, user_id: invitedUserId });

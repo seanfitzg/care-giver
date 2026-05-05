@@ -11,7 +11,7 @@ export function TimePicker({ value, onChange }: Props) {
       <input
         type="time"
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={(e) => onChange(e.target.value)}
         style={{
           border: '1px solid #d1d5db',
           borderRadius: 8,

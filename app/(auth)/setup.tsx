@@ -101,7 +101,11 @@ export default function SetupScreen() {
           textContentType="newPassword"
         />
 
-        <Pressable style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSetPassword} disabled={loading}>
+        <Pressable
+          style={[styles.button, loading && styles.buttonDisabled]}
+          onPress={handleSetPassword}
+          disabled={loading}
+        >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
