@@ -65,7 +65,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
       if (session) {
         applyUserData(await loadUserData(session.user.id));
@@ -78,7 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session) applyUserData(await loadUserData(session.user.id));
   }, []);
 
@@ -87,17 +91,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{
-      session,
-      user: session?.user ?? null,
-      loading,
-      role,
-      careRecipientId,
-      careRecipientName,
-      isAdmin: role === 'admin',
-      signOut,
-      refresh,
-    }}>
+    <AuthContext.Provider
+      value={{
+        session,
+        user: session?.user ?? null,
+        loading,
+        role,
+        careRecipientId,
+        careRecipientName,
+        isAdmin: role === 'admin',
+        signOut,
+        refresh,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

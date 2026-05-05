@@ -55,7 +55,9 @@ export function DutyProvider({ children }: { children: React.ReactNode }) {
         () => fetchOpenSession(),
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user, isAdmin, careRecipientId, fetchOpenSession]);
 
   const checkIn = useCallback(async () => {

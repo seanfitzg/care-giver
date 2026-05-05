@@ -17,10 +17,11 @@ export default function TodayScreen() {
           onPress={isOnDuty ? checkOut : checkIn}
           disabled={loading}
         >
-          {loading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.fabText}>{isOnDuty ? 'Check out' : 'Check in'}</Text>
-          }
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.fabText}>{isOnDuty ? 'Check out' : 'Check in'}</Text>
+          )}
         </Pressable>
       )}
     </View>

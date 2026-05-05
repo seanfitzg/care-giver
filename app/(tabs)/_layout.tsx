@@ -14,15 +14,16 @@ export default function TabLayout() {
   const { isAdmin, role, careRecipientName, signOut } = useAuth();
 
   const settingsHref = isAdmin ? '/admin' : '/admin/schedule';
-  const settingsHeaderRight = (isAdmin || role === 'senior_carer')
-    ? () => (
-        <Link href={settingsHref as never} asChild>
-          <Pressable style={{ marginRight: 16 }} accessibilityLabel="Settings">
-            <Ionicons name="settings-outline" size={22} color="#374151" />
-          </Pressable>
-        </Link>
-      )
-    : undefined;
+  const settingsHeaderRight =
+    isAdmin || role === 'senior_carer'
+      ? () => (
+          <Link href={settingsHref as never} asChild>
+            <Pressable style={{ marginRight: 16 }} accessibilityLabel="Settings">
+              <Ionicons name="settings-outline" size={22} color="#374151" />
+            </Pressable>
+          </Link>
+        )
+      : undefined;
 
   const headerLeft = () => (
     <Pressable style={{ marginLeft: 16 }} onPress={signOut} accessibilityLabel="Sign out">
@@ -55,28 +56,36 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Today',
-          tabBarIcon: ({ color, size }) => <Ionicons name="today-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="today-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: 'Feed',
-          tabBarIcon: ({ color, size }) => <Ionicons name="newspaper-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="newspaper-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="on-duty"
         options={{
           title: 'On Duty',
-          tabBarIcon: ({ color, size }) => <Ionicons name="shield-checkmark-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="shield-checkmark-outline" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="log"
         options={{
           title: 'Log',
-          tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="list-outline" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

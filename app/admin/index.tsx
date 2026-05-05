@@ -25,8 +25,9 @@ type CarerRow = {
 };
 
 async function fetchCarers(careRecipientId: string): Promise<CarerRow[]> {
-  const { data, error } = await supabase
-    .rpc('get_carers_with_emails', { p_care_recipient_id: careRecipientId });
+  const { data, error } = await supabase.rpc('get_carers_with_emails', {
+    p_care_recipient_id: careRecipientId,
+  });
   if (error) throw error;
   return (data ?? []) as CarerRow[];
 }
@@ -46,7 +47,9 @@ export default function AdminScreen() {
 
   const inviteMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: UserRole }) => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke('invite-carer', {
         body: { email, role, care_recipient_id: careRecipientId },
         headers: { Authorization: `Bearer ${session!.access_token}` },
@@ -96,7 +99,11 @@ export default function AdminScreen() {
       `Remove ${carer.email ?? carer.user_id} from this care team? They will no longer be able to view or record care events.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Revoke', style: 'destructive', onPress: () => revokeMutation.mutate(carer.user_id) },
+        {
+          text: 'Revoke',
+          style: 'destructive',
+          onPress: () => revokeMutation.mutate(carer.user_id),
+        },
       ],
     );
   };
@@ -104,14 +111,13 @@ export default function AdminScreen() {
   const confirmRoleChange = (carer: CarerRow) => {
     const newRole: UserRole = carer.role === 'carer' ? 'senior_carer' : 'carer';
     const label = newRole === 'senior_carer' ? 'Senior Carer' : 'Carer';
-    Alert.alert(
-      'Change role',
-      `Change this person's role to ${label}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Change', onPress: () => changeRoleMutation.mutate({ userId: carer.user_id, role: newRole }) },
-      ],
-    );
+    Alert.alert('Change role', `Change this person's role to ${label}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Change',
+        onPress: () => changeRoleMutation.mutate({ userId: carer.user_id, role: newRole }),
+      },
+    ]);
   };
 
   const handleInvite = () => {
@@ -167,7 +173,10 @@ export default function AdminScreen() {
                   <Pressable style={styles.actionButton} onPress={() => confirmRoleChange(item)}>
                     <Text style={styles.actionText}>Change role</Text>
                   </Pressable>
-                  <Pressable style={[styles.actionButton, styles.revokeButton]} onPress={() => confirmRevoke(item)}>
+                  <Pressable
+                    style={[styles.actionButton, styles.revokeButton]}
+                    onPress={() => confirmRevoke(item)}
+                  >
                     <Text style={[styles.actionText, styles.revokeText]}>Revoke</Text>
                   </Pressable>
                 </View>
@@ -201,7 +210,9 @@ export default function AdminScreen() {
                 style={[styles.roleOption, inviteRole === r && styles.roleOptionSelected]}
                 onPress={() => setInviteRole(r)}
               >
-                <Text style={[styles.roleOptionText, inviteRole === r && styles.roleOptionTextSelected]}>
+                <Text
+                  style={[styles.roleOptionText, inviteRole === r && styles.roleOptionTextSelected]}
+                >
                   {roleLabel(r)}
                 </Text>
               </Pressable>

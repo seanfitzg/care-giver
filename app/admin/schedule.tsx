@@ -129,7 +129,9 @@ export default function ScheduleScreen() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('scheduled_items')
-        .select('id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,duration_minutes')
+        .select(
+          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,duration_minutes',
+        )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
       if (error) throw error;
@@ -189,10 +191,15 @@ export default function ScheduleScreen() {
       }
 
       if (form.editId) {
-        const { error } = await supabase.from('scheduled_items').update(payload).eq('id', form.editId);
+        const { error } = await supabase
+          .from('scheduled_items')
+          .update(payload)
+          .eq('id', form.editId);
         if (error) throw error;
       } else {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         payload.created_by = session!.user.id;
         const { error } = await supabase.from('scheduled_items').insert(payload);
         if (error) throw error;
@@ -223,11 +230,18 @@ export default function ScheduleScreen() {
         notes: form.notes.trim() || null,
       };
       if (form.editId) {
-        const { error } = await supabase.from('as_needed_medications').update(payload).eq('id', form.editId);
+        const { error } = await supabase
+          .from('as_needed_medications')
+          .update(payload)
+          .eq('id', form.editId);
         if (error) throw error;
       } else {
-        const { data: { session } } = await supabase.auth.getSession();
-        const { error } = await supabase.from('as_needed_medications').insert({ ...payload, created_by: session!.user.id });
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const { error } = await supabase
+          .from('as_needed_medications')
+          .insert({ ...payload, created_by: session!.user.id });
         if (error) throw error;
       }
     },
@@ -259,19 +273,26 @@ export default function ScheduleScreen() {
       { text: 'Delete', style: 'destructive', onPress: () => deleteAsnMutation.mutate(item.id) },
     ]);
 
-  const meds = items.filter(i => i.type === 'medication_scheduled');
-  const feedings = items.filter(i => i.type === 'feeding');
-  const activities = items.filter(i => i.type === 'activity');
+  const meds = items.filter((i) => i.type === 'medication_scheduled');
+  const feedings = items.filter((i) => i.type === 'feeding');
+  const activities = items.filter((i) => i.type === 'activity');
 
   if (loadingItems || loadingAsn) {
-    return <View style={s.center}><ActivityIndicator size="large" /></View>;
+    return (
+      <View style={s.center}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
     <>
       <ScrollView style={s.container} contentContainerStyle={s.content}>
-        <SectionBlock title="Scheduled Medications" onAdd={() => setItemForm(blankItemForm('medication_scheduled'))}>
-          {meds.map(item => (
+        <SectionBlock
+          title="Scheduled Medications"
+          onAdd={() => setItemForm(blankItemForm('medication_scheduled'))}
+        >
+          {meds.map((item) => (
             <ItemRow
               key={item.id}
               label={item.name}
@@ -284,7 +305,7 @@ export default function ScheduleScreen() {
         </SectionBlock>
 
         <SectionBlock title="Feeding Schedule" onAdd={() => setItemForm(blankItemForm('feeding'))}>
-          {feedings.map(item => (
+          {feedings.map((item) => (
             <ItemRow
               key={item.id}
               label={item.name}
@@ -297,11 +318,16 @@ export default function ScheduleScreen() {
         </SectionBlock>
 
         <SectionBlock title="Activities" onAdd={() => setItemForm(blankItemForm('activity'))}>
-          {activities.map(item => (
+          {activities.map((item) => (
             <ItemRow
               key={item.id}
               label={item.name}
-              sub={[fmtTime(item.time_of_day), item.duration_minutes != null ? fmtDuration(item.duration_minutes) : null].filter(Boolean).join(' · ')}
+              sub={[
+                fmtTime(item.time_of_day),
+                item.duration_minutes != null ? fmtDuration(item.duration_minutes) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
               onEdit={() => setItemForm(itemFormFromItem(item))}
               onDelete={() => confirmDelete(item)}
             />
@@ -309,13 +335,18 @@ export default function ScheduleScreen() {
           {activities.length === 0 && <Text style={s.empty}>No activities scheduled.</Text>}
         </SectionBlock>
 
-        <SectionBlock title="As-Needed Medications" onAdd={() => setAsnForm({ editId: null, name: '', notes: '' })}>
-          {asnMeds.map(item => (
+        <SectionBlock
+          title="As-Needed Medications"
+          onAdd={() => setAsnForm({ editId: null, name: '', notes: '' })}
+        >
+          {asnMeds.map((item) => (
             <ItemRow
               key={item.id}
               label={item.name}
               sub={item.notes ?? ''}
-              onEdit={() => setAsnForm({ editId: item.id, name: item.name, notes: item.notes ?? '' })}
+              onEdit={() =>
+                setAsnForm({ editId: item.id, name: item.name, notes: item.notes ?? '' })
+              }
               onDelete={() => confirmDeleteAsn(item)}
             />
           ))}
@@ -426,7 +457,7 @@ function ScheduledItemModal({
       <TextInput
         style={s.input}
         value={form.name}
-        onChangeText={v => set({ name: v })}
+        onChangeText={(v) => set({ name: v })}
         placeholder="Name"
         placeholderTextColor="#9ca3af"
       />
@@ -434,26 +465,26 @@ function ScheduledItemModal({
       {form.type !== 'feeding' && (
         <>
           <FieldLabel>Time</FieldLabel>
-          <TimePicker value={form.time_of_day} onChange={v => set({ time_of_day: v })} />
+          <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
         </>
       )}
 
       {form.type === 'feeding' && (
         <>
           <FieldLabel>First session at (optional)</FieldLabel>
-          <TimePicker value={form.time_of_day} onChange={v => set({ time_of_day: v })} />
+          <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
           <FieldLabel>Interval between sessions (minutes)</FieldLabel>
           <TextInput
             style={s.input}
             value={form.interval_minutes}
-            onChangeText={v => set({ interval_minutes: v })}
+            onChangeText={(v) => set({ interval_minutes: v })}
             keyboardType="number-pad"
             placeholder="e.g. 180"
             placeholderTextColor="#9ca3af"
           />
           <FieldLabel>Bolus rest duration</FieldLabel>
           <View style={s.segRow}>
-            {(['20', '25'] as const).map(v => (
+            {(['20', '25'] as const).map((v) => (
               <Pressable
                 key={v}
                 style={[s.seg, form.bolus_rest_minutes === v && s.segSelected]}
@@ -472,7 +503,7 @@ function ScheduledItemModal({
         <>
           <FieldLabel>Type</FieldLabel>
           <View style={s.segRow}>
-            {([true, false] as const).map(v => (
+            {([true, false] as const).map((v) => (
               <Pressable
                 key={String(v)}
                 style={[s.seg, form.is_compulsory === v && s.segSelected]}
@@ -493,7 +524,7 @@ function ScheduledItemModal({
           <TextInput
             style={s.input}
             value={form.duration_minutes}
-            onChangeText={v => set({ duration_minutes: v })}
+            onChangeText={(v) => set({ duration_minutes: v })}
             keyboardType="number-pad"
             placeholder="e.g. 30"
             placeholderTextColor="#9ca3af"
@@ -505,7 +536,7 @@ function ScheduledItemModal({
       <TextInput
         style={s.input}
         value={form.overdue_window_minutes}
-        onChangeText={v => set({ overdue_window_minutes: v })}
+        onChangeText={(v) => set({ overdue_window_minutes: v })}
         keyboardType="number-pad"
         placeholder="e.g. 15"
         placeholderTextColor="#9ca3af"
@@ -515,7 +546,7 @@ function ScheduledItemModal({
       <TextInput
         style={s.input}
         value={form.missed_threshold_minutes}
-        onChangeText={v => set({ missed_threshold_minutes: v })}
+        onChangeText={(v) => set({ missed_threshold_minutes: v })}
         keyboardType="number-pad"
         placeholder="e.g. 60"
         placeholderTextColor="#9ca3af"
@@ -554,15 +585,13 @@ function AsnModal({
 
   return (
     <View style={s.modal}>
-      <Text style={s.modalTitle}>
-        {form.editId ? 'Edit' : 'Add'} As-Needed Medication
-      </Text>
+      <Text style={s.modalTitle}>{form.editId ? 'Edit' : 'Add'} As-Needed Medication</Text>
 
       <FieldLabel>Name</FieldLabel>
       <TextInput
         style={s.input}
         value={form.name}
-        onChangeText={v => set({ name: v })}
+        onChangeText={(v) => set({ name: v })}
         placeholder="e.g. Rescue medication"
         placeholderTextColor="#9ca3af"
       />
@@ -571,7 +600,7 @@ function AsnModal({
       <TextInput
         style={[s.input, s.inputMultiline]}
         value={form.notes}
-        onChangeText={v => set({ notes: v })}
+        onChangeText={(v) => set({ notes: v })}
         placeholder="Any notes about this medication"
         placeholderTextColor="#9ca3af"
         multiline

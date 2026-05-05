@@ -40,7 +40,12 @@ export function TimePicker({ value, onChange }: Props) {
                 <Pressable onPress={() => setShow(false)}>
                   <Text style={s.cancel}>Cancel</Text>
                 </Pressable>
-                <Pressable onPress={() => { onChange(dateToHHMM(tempDate)); setShow(false); }}>
+                <Pressable
+                  onPress={() => {
+                    onChange(dateToHHMM(tempDate));
+                    setShow(false);
+                  }}
+                >
                   <Text style={s.done}>Done</Text>
                 </Pressable>
               </View>
@@ -49,7 +54,9 @@ export function TimePicker({ value, onChange }: Props) {
                 value={tempDate}
                 is24Hour={true}
                 display="spinner"
-                onChange={(_: DateTimePickerEvent, d?: Date) => { if (d) setTempDate(d); }}
+                onChange={(_: DateTimePickerEvent, d?: Date) => {
+                  if (d) setTempDate(d);
+                }}
               />
             </View>
           </View>

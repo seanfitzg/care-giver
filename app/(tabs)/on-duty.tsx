@@ -1,13 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -20,8 +13,9 @@ type CarerDutyRow = {
 };
 
 async function fetchDutyStatus(careRecipientId: string): Promise<CarerDutyRow[]> {
-  const { data, error } = await supabase
-    .rpc('get_carers_with_duty_status', { p_care_recipient_id: careRecipientId });
+  const { data, error } = await supabase.rpc('get_carers_with_duty_status', {
+    p_care_recipient_id: careRecipientId,
+  });
   if (error) throw error;
   return (data ?? []) as CarerDutyRow[];
 }
@@ -62,7 +56,9 @@ export default function OnDutyScreen() {
         () => qc.invalidateQueries({ queryKey: ['duty-status', careRecipientId] }),
       )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [careRecipientId, qc]);
 
   const checkInMutation = useMutation({
@@ -124,8 +120,9 @@ export default function OnDutyScreen() {
               )}
             </View>
           </View>
-          {isAdmin && item.role !== 'admin' && (
-            item.is_on_duty ? (
+          {isAdmin &&
+            item.role !== 'admin' &&
+            (item.is_on_duty ? (
               <Pressable
                 style={[styles.action, styles.actionOut]}
                 onPress={() => checkOutMutation.mutate(item.user_id)}
@@ -141,8 +138,7 @@ export default function OnDutyScreen() {
               >
                 <Text style={styles.actionInText}>Check in</Text>
               </Pressable>
-            )
-          )}
+            ))}
         </View>
       )}
       ListEmptyComponent={<Text style={styles.empty}>No team members found.</Text>}

@@ -56,10 +56,7 @@ Deno.test('missing role returns 400', async () => {
 });
 
 Deno.test('missing care_recipient_id returns 400', async () => {
-  const req = makeRequest(
-    { email: VALID_BODY.email, role: 'carer' },
-    'Bearer test-token',
-  );
+  const req = makeRequest({ email: VALID_BODY.email, role: 'carer' }, 'Bearer test-token');
   const res = await handler(req);
   assertEquals(res.status, 400);
   const body = await res.json();
@@ -67,10 +64,7 @@ Deno.test('missing care_recipient_id returns 400', async () => {
 });
 
 Deno.test('invalid role returns 400', async () => {
-  const req = makeRequest(
-    { ...VALID_BODY, role: 'super_admin' },
-    'Bearer test-token',
-  );
+  const req = makeRequest({ ...VALID_BODY, role: 'super_admin' }, 'Bearer test-token');
   const res = await handler(req);
   assertEquals(res.status, 400);
   const body = await res.json();
@@ -78,10 +72,7 @@ Deno.test('invalid role returns 400', async () => {
 });
 
 Deno.test('admin role is rejected (not invitable)', async () => {
-  const req = makeRequest(
-    { ...VALID_BODY, role: 'admin' },
-    'Bearer test-token',
-  );
+  const req = makeRequest({ ...VALID_BODY, role: 'admin' }, 'Bearer test-token');
   const res = await handler(req);
   assertEquals(res.status, 400);
   const body = await res.json();
