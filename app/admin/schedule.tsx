@@ -287,7 +287,7 @@ export default function ScheduleScreen() {
             <ItemRow
               key={item.id}
               label={item.name}
-              sub={`Every ${fmtDuration(item.interval_minutes)} · ${fmtDuration(item.bolus_rest_minutes)} bolus rest`}
+              sub={`Every ${fmtDuration(item.interval_minutes ?? 0)} · ${fmtDuration(item.bolus_rest_minutes ?? 0)} bolus rest`}
               onEdit={() => setItemForm(itemFormFromItem(item))}
               onDelete={() => confirmDelete(item)}
             />

@@ -11,12 +11,13 @@ const TAB_TITLES: Record<string, string> = {
 };
 
 export default function TabLayout() {
-  const { isAdmin, careRecipientName, signOut } = useAuth();
+  const { isAdmin, role, careRecipientName, signOut } = useAuth();
 
-  const adminHeaderRight = isAdmin
+  const settingsHref = isAdmin ? '/admin' : '/admin/schedule';
+  const settingsHeaderRight = (isAdmin || role === 'senior_carer')
     ? () => (
-        <Link href={'/admin' as never} asChild>
-          <Pressable style={{ marginRight: 16 }} accessibilityLabel="Carer management">
+        <Link href={settingsHref as never} asChild>
+          <Pressable style={{ marginRight: 16 }} accessibilityLabel="Settings">
             <Ionicons name="settings-outline" size={22} color="#374151" />
           </Pressable>
         </Link>
@@ -35,7 +36,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#2563eb',
         headerShown: true,
         headerLeft,
-        headerRight: adminHeaderRight,
+        headerRight: settingsHeaderRight,
         headerTitle: () => (
           <View style={{ alignItems: 'center' }}>
             <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827' }}>
