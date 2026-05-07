@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 const TAB_TITLES: Record<string, string> = {
   index: 'Today',
   feed: 'Feed',
-  'on-duty': 'On Duty',
   log: 'Log',
 };
 
@@ -67,15 +66,6 @@ export default function TabLayout() {
           title: 'Feed',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="newspaper-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="on-duty"
-        options={{
-          title: 'On Duty',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="shield-checkmark-outline" size={size} color={color} />
           ),
         }}
       />

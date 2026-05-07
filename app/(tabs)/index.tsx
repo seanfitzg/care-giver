@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -9,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
-import { useDuty } from '@/contexts/DutyContext';
 import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
 import type { ItemStatus, ItemType, TimelineItem } from '@/hooks/useTimeline';
 
@@ -85,8 +83,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export default function TodayScreen() {
-  const { isAdmin, careRecipientId } = useAuth();
-  const { isOnDuty, loading: dutyLoading, checkIn, checkOut } = useDuty();
+  const { careRecipientId } = useAuth();
   const { items, isLoading, refetch } = useTimeline(careRecipientId);
 
   const overdue = items.filter((i) => i.status === 'overdue');
@@ -167,20 +164,6 @@ export default function TodayScreen() {
 
         {items.length === 0 && <Text style={styles.empty}>No tasks in this window.</Text>}
       </ScrollView>
-
-      {!isAdmin && (
-        <Pressable
-          style={[styles.fab, isOnDuty ? styles.fabOut : styles.fabIn]}
-          onPress={isOnDuty ? checkOut : checkIn}
-          disabled={dutyLoading}
-        >
-          {dutyLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.fabText}>{isOnDuty ? 'Check out' : 'Check in'}</Text>
-          )}
-        </Pressable>
-      )}
     </View>
   );
 }
@@ -188,7 +171,7 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 16, paddingBottom: 100 },
+  scroll: { padding: 16, paddingBottom: 32 },
   windowLabel: { fontSize: 11, color: '#9ca3af', textAlign: 'center', marginBottom: 12 },
 
   overdueBanner: {
@@ -259,23 +242,4 @@ const styles = StyleSheet.create({
   statusBadgeText: { fontSize: 11, fontWeight: '600' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
-
-  fab: {
-    position: 'absolute',
-    bottom: 24,
-    right: 24,
-    paddingHorizontal: 22,
-    paddingVertical: 14,
-    borderRadius: 28,
-    minWidth: 120,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  fabIn: { backgroundColor: '#2563eb' },
-  fabOut: { backgroundColor: '#dc2626' },
-  fabText: { color: '#fff', fontWeight: '600', fontSize: 15 },
 });
