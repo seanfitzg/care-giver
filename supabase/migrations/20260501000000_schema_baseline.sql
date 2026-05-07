@@ -39,16 +39,6 @@ CREATE TABLE user_roles (
   UNIQUE (user_id, care_recipient_id)
 );
 
--- Carer check-in / check-out. An open session (no checked_out_at) means on-duty.
--- Admins are always considered on-duty without a duty session.
-CREATE TABLE duty_sessions (
-  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  carer_id          uuid        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  care_recipient_id uuid        NOT NULL REFERENCES care_recipients(id) ON DELETE CASCADE,
-  checked_in_at     timestamptz NOT NULL DEFAULT now(),
-  checked_out_at    timestamptz
-);
-
 -- All recurring tasks: medications, feeding sessions, and activities.
 -- time_of_day applies to medication_scheduled and activity.
 -- interval_minutes applies to feeding.
@@ -124,12 +114,6 @@ CREATE TABLE push_tokens (
 
 CREATE INDEX user_roles_care_recipient_id_idx
   ON user_roles (care_recipient_id);
-
-CREATE INDEX duty_sessions_care_recipient_checked_out_idx
-  ON duty_sessions (care_recipient_id, checked_out_at);
-
-CREATE INDEX duty_sessions_carer_id_idx
-  ON duty_sessions (carer_id);
 
 CREATE INDEX scheduled_items_care_recipient_id_idx
   ON scheduled_items (care_recipient_id);
@@ -221,7 +205,6 @@ $$;
 
 ALTER TABLE care_recipients       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE duty_sessions         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scheduled_items       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feeding_sessions      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_log             ENABLE ROW LEVEL SECURITY;
@@ -255,26 +238,6 @@ CREATE POLICY "user_roles_update"
 CREATE POLICY "user_roles_delete"
   ON user_roles FOR DELETE TO authenticated
   USING (is_admin_for(care_recipient_id) AND user_id != auth.uid());
-
--- duty_sessions
--- Carers manage their own sessions; admins manage any session for their care_recipient.
-CREATE POLICY "duty_sessions_select"
-  ON duty_sessions FOR SELECT TO authenticated
-  USING (has_care_recipient_role(care_recipient_id));
-
-CREATE POLICY "duty_sessions_insert"
-  ON duty_sessions FOR INSERT TO authenticated
-  WITH CHECK (
-    has_care_recipient_role(care_recipient_id)
-    AND (carer_id = auth.uid() OR is_admin_for(care_recipient_id))
-  );
-
-CREATE POLICY "duty_sessions_update"
-  ON duty_sessions FOR UPDATE TO authenticated
-  USING (
-    has_care_recipient_role(care_recipient_id)
-    AND (carer_id = auth.uid() OR is_admin_for(care_recipient_id))
-  );
 
 -- scheduled_items
 -- All members read; admin and senior_carer manage.

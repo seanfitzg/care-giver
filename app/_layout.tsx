@@ -3,7 +3,6 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { DutyProvider } from '@/contexts/DutyContext';
 
 const queryClient = new QueryClient();
 
@@ -50,11 +49,9 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <DutyProvider>
-          <AuthGate>
-            <Stack screenOptions={{ headerShown: false }} />
-          </AuthGate>
-        </DutyProvider>
+        <AuthGate>
+          <Stack screenOptions={{ headerShown: false }} />
+        </AuthGate>
       </AuthProvider>
     </QueryClientProvider>
   );
