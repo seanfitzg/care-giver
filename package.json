@@ -11,11 +11,11 @@
     "type-check": "tsc --noEmit",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
-    "supabase:clear-recipient": "supabase db execute --local --file supabase/clear-recipient.sql",
+    "supabase:clear-recipient": "supabase db query --local --file supabase/clear-recipient.sql",
+    "supabase:seed-remote": "supabase db query --linked --file supabase/seed.sql",
     "test:db": "supabase test db",
     "test:functions": "deno test --allow-env --allow-net --config supabase/functions/deno.json supabase/functions/",
     "test": "run-s test:db test:functions",
-    "dev": "run-p supabase:start start",
     "format": "prettier --write \"**/*.{ts,tsx,js}\""
   },
   "dependencies": {
