@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { MedicationConfirmSheet } from '@/components/MedicationConfirmSheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRecordMedication } from '@/hooks/useRecordMedication';
 import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
 import type { ItemStatus, ItemType, TimelineItem } from '@/hooks/useTimeline';
 
@@ -53,25 +58,59 @@ function StatusBadge({ status }: { status: ItemStatus }) {
 function TaskCard({
   item,
   variant = 'default',
+  onRecord,
 }: {
   item: TimelineItem;
   variant?: 'default' | 'overdue';
+  onRecord?: (item: TimelineItem) => void;
 }) {
   const isDone = item.status === 'done';
-  return (
-    <View
-      style={[styles.card, variant === 'overdue' && styles.cardOverdue, isDone && styles.cardDone]}
-    >
+  const canRecord =
+    item.type === 'medication_scheduled' &&
+    (item.status === 'overdue' || item.status === 'upcoming') &&
+    !!onRecord;
+
+  const cardContent = (
+    <>
       <TypeIcon type={item.type} />
       <View style={styles.cardBody}>
         <Text style={[styles.cardName, isDone && styles.cardNameDone]} numberOfLines={1}>
           {item.name}
         </Text>
         <Text style={styles.cardTime}>{formatTime(item.scheduledAt)}</Text>
+        {isDone && item.completedByName && (
+          <Text style={styles.cardCarerName}>Given by {item.completedByName}</Text>
+        )}
       </View>
-      <StatusBadge status={item.status} />
-    </View>
+      {canRecord ? (
+        <View style={styles.recordBtn}>
+          <Ionicons name="checkmark-circle-outline" size={18} color="#2563eb" />
+          <Text style={styles.recordBtnText}>Record</Text>
+        </View>
+      ) : (
+        <StatusBadge status={item.status} />
+      )}
+    </>
   );
+
+  const cardStyle = [
+    styles.card,
+    variant === 'overdue' && styles.cardOverdue,
+    isDone && styles.cardDone,
+  ];
+
+  if (canRecord) {
+    return (
+      <Pressable
+        style={({ pressed }) => [...cardStyle, pressed && styles.cardPressed]}
+        onPress={() => onRecord(item)}
+      >
+        {cardContent}
+      </Pressable>
+    );
+  }
+
+  return <View style={cardStyle}>{cardContent}</View>;
 }
 
 function SectionHeader({ title }: { title: string }) {
@@ -83,12 +122,32 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export default function TodayScreen() {
-  const { careRecipientId } = useAuth();
+  const { careRecipientId, user } = useAuth();
   const { items, isLoading, refetch } = useTimeline(careRecipientId);
+  const { mutate: recordMedication, isPending } = useRecordMedication();
+  const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
 
   const overdue = items.filter((i) => i.status === 'overdue');
   const earlierToday = items.filter((i) => i.status === 'done' || i.status === 'missed');
   const upcoming = items.filter((i) => i.status === 'upcoming');
+
+  function handleRecord(notes: string) {
+    if (!selectedItem || !careRecipientId || !user) return;
+    recordMedication(
+      {
+        careRecipientId,
+        scheduledItemId: selectedItem.scheduledItemId,
+        carerId: user.id,
+        notes: notes.trim() || undefined,
+      },
+      {
+        onSuccess: () => setSelectedItem(null),
+        onError: () => {
+          Alert.alert('Error', 'Failed to record medication. Please try again.');
+        },
+      },
+    );
+  }
 
   if (isLoading) {
     return (
@@ -116,7 +175,12 @@ export default function TodayScreen() {
               {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
             </Text>
             {overdue.map((item) => (
-              <TaskCard key={item.key} item={item} variant="overdue" />
+              <TaskCard
+                key={item.key}
+                item={item}
+                variant="overdue"
+                onRecord={setSelectedItem}
+              />
             ))}
           </View>
         )}
@@ -155,7 +219,7 @@ export default function TodayScreen() {
                   {idx < upcoming.length - 1 && <View style={styles.spineLine} />}
                 </View>
                 <View style={styles.cardWrapper}>
-                  <TaskCard item={item} />
+                  <TaskCard item={item} onRecord={setSelectedItem} />
                 </View>
               </View>
             ))}
@@ -164,6 +228,14 @@ export default function TodayScreen() {
 
         {items.length === 0 && <Text style={styles.empty}>No tasks in this window.</Text>}
       </ScrollView>
+
+      <MedicationConfirmSheet
+        item={selectedItem}
+        visible={!!selectedItem}
+        isLoading={isPending}
+        onConfirm={handleRecord}
+        onDismiss={() => setSelectedItem(null)}
+      />
     </View>
   );
 }
@@ -221,10 +293,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   cardDone: { opacity: 0.7 },
+  cardPressed: { opacity: 0.85 },
   cardBody: { flex: 1, minWidth: 0 },
   cardName: { fontSize: 14, fontWeight: '500', color: '#111827' },
   cardNameDone: { color: '#6b7280' },
   cardTime: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  cardCarerName: { fontSize: 11, color: '#16a34a', marginTop: 2 },
 
   typeIcon: {
     width: 32,
@@ -240,6 +314,17 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   statusBadgeText: { fontSize: 11, fontWeight: '600' },
+
+  recordBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: '#eff6ff',
+  },
+  recordBtnText: { fontSize: 12, fontWeight: '600', color: '#2563eb' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
 });
