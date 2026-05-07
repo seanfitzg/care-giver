@@ -78,14 +78,13 @@ function computeStatus(
   missedThreshold: number,
   todayEvents: EventLogRow[],
   now: Date,
+  earliestMs: number,
 ): ItemStatus {
   const scheduledMs = scheduledAt.getTime();
   const match = todayEvents.find((e) => {
     if (e.scheduled_item_id !== scheduledItemId) return false;
     const eMs = new Date(e.occurred_at).getTime();
-    return (
-      eMs >= scheduledMs - overdueWindow * 60_000 && eMs <= scheduledMs + missedThreshold * 60_000
-    );
+    return eMs >= earliestMs && eMs <= scheduledMs + missedThreshold * 60_000;
   });
 
   if (match) return match.status === 'completed' ? 'done' : 'missed';
@@ -108,6 +107,8 @@ export function buildTimelineItems(
   const windowEnd = new Date(now.getTime() + futureHours * 3_600_000);
   const items: TimelineItem[] = [];
 
+  const dayStartMs = todayBounds().start.getTime();
+
   for (const row of scheduledItems) {
     const times: Date[] =
       row.type === 'feeding' && row.interval_minutes
@@ -116,7 +117,16 @@ export function buildTimelineItems(
           ? [scheduledTimeToday(row.time_of_day)]
           : [];
 
-    for (const scheduledAt of times) {
+    for (let i = 0; i < times.length; i++) {
+      const scheduledAt = times[i];
+      // For the first occurrence use start-of-day so early recordings are captured;
+      // for subsequent occurrences use the previous occurrence's missed-threshold boundary
+      // to avoid double-attributing one event to two slots.
+      const earliestMs =
+        i === 0
+          ? dayStartMs
+          : times[i - 1].getTime() + row.missed_threshold_minutes * 60_000;
+
       const status = computeStatus(
         scheduledAt,
         row.id,
@@ -124,6 +134,7 @@ export function buildTimelineItems(
         row.missed_threshold_minutes,
         todayEvents,
         now,
+        earliestMs,
       );
 
       // Overdue items always appear; others are filtered to the window.
@@ -133,14 +144,14 @@ export function buildTimelineItems(
 
       let completedByName: string | undefined;
       if (status === 'done') {
-        const scheduledMs = scheduledAt.getTime();
         const completionEvent = todayEvents.find(
           (e) =>
             e.scheduled_item_id === row.id &&
             e.status === 'completed' &&
             e.carer_id != null &&
-            new Date(e.occurred_at).getTime() >= scheduledMs - row.overdue_window_minutes * 60_000 &&
-            new Date(e.occurred_at).getTime() <= scheduledMs + row.missed_threshold_minutes * 60_000,
+            new Date(e.occurred_at).getTime() >= earliestMs &&
+            new Date(e.occurred_at).getTime() <=
+              scheduledAt.getTime() + row.missed_threshold_minutes * 60_000,
         );
         if (completionEvent?.carer_id) {
           completedByName = carerNames[completionEvent.carer_id];

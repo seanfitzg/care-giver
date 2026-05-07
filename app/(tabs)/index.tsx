@@ -85,7 +85,7 @@ function TaskCard({
       {canRecord ? (
         <View style={styles.recordBtn}>
           <Ionicons name="checkmark-circle-outline" size={18} color="#2563eb" />
-          <Text style={styles.recordBtnText}>Given</Text>
+          <Text style={styles.recordBtnText}>Record</Text>
         </View>
       ) : (
         <StatusBadge status={item.status} />
