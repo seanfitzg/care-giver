@@ -16,7 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { TimePicker } from '@/components/TimePicker';
 
-type ItemType = 'medication_scheduled' | 'feeding' | 'activity';
+type ItemType = 'medication_scheduled' | 'nutrition' | 'activity';
 
 type ScheduledItem = {
   id: string;
@@ -81,7 +81,7 @@ function blankItemForm(type: ItemType): ItemForm {
   return {
     editId: null,
     type,
-    name: type === 'feeding' ? 'Feeding' : '',
+    name: type === 'nutrition' ? 'Nutrition' : '',
     time_of_day: '',
     interval_minutes: '180',
     bolus_rest_minutes: '20',
@@ -109,7 +109,7 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
 
 const TYPE_LABELS: Record<ItemType, string> = {
   medication_scheduled: 'Scheduled Medication',
-  feeding: 'Feeding',
+  nutrition: 'Nutrition',
   activity: 'Activity',
 };
 
@@ -172,7 +172,7 @@ export default function ScheduleScreen() {
         is_compulsory: form.is_compulsory,
       };
 
-      if (form.type === 'feeding') {
+      if (form.type === 'nutrition') {
         const interval = parseInt(form.interval_minutes, 10);
         if (!interval || interval < 1) throw new Error('Interval must be a positive number.');
         payload.interval_minutes = interval;
@@ -274,7 +274,7 @@ export default function ScheduleScreen() {
     ]);
 
   const meds = items.filter((i) => i.type === 'medication_scheduled');
-  const feedings = items.filter((i) => i.type === 'feeding');
+  const nutritionItems = items.filter((i) => i.type === 'nutrition');
   const activities = items.filter((i) => i.type === 'activity');
 
   if (loadingItems || loadingAsn) {
@@ -304,8 +304,8 @@ export default function ScheduleScreen() {
           {meds.length === 0 && <Text style={s.empty}>No medications scheduled.</Text>}
         </SectionBlock>
 
-        <SectionBlock title="Feeding Schedule" onAdd={() => setItemForm(blankItemForm('feeding'))}>
-          {feedings.map((item) => (
+        <SectionBlock title="Nutrition Schedule" onAdd={() => setItemForm(blankItemForm('nutrition'))}>
+          {nutritionItems.map((item) => (
             <ItemRow
               key={item.id}
               label={item.name}
@@ -314,7 +314,7 @@ export default function ScheduleScreen() {
               onDelete={() => confirmDelete(item)}
             />
           ))}
-          {feedings.length === 0 && <Text style={s.empty}>No feeding schedule set.</Text>}
+          {nutritionItems.length === 0 && <Text style={s.empty}>No nutrition sessions set.</Text>}
         </SectionBlock>
 
         <SectionBlock title="Activities" onAdd={() => setItemForm(blankItemForm('activity'))}>
@@ -462,14 +462,14 @@ function ScheduledItemModal({
         placeholderTextColor="#9ca3af"
       />
 
-      {form.type !== 'feeding' && (
+      {form.type !== 'nutrition' && (
         <>
           <FieldLabel>Time</FieldLabel>
           <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
         </>
       )}
 
-      {form.type === 'feeding' && (
+      {form.type === 'nutrition' && (
         <>
           <FieldLabel>First session at (optional)</FieldLabel>
           <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />

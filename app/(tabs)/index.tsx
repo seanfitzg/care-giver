@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { ActivityConfirmSheet } from '@/components/ActivityConfirmSheet';
 import { MedicationConfirmSheet } from '@/components/MedicationConfirmSheet';
+import { PRNMedicationSheet } from '@/components/PRNMedicationSheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRecordActivity } from '@/hooks/useRecordActivity';
 import { useRecordMedication } from '@/hooks/useRecordMedication';
+import { useRecordPRNMedication } from '@/hooks/useRecordPRNMedication';
+import { usePRNMedications } from '@/hooks/usePRNMedications';
 import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
 import type { ItemStatus, ItemType, TimelineItem } from '@/hooks/useTimeline';
 
@@ -23,7 +26,7 @@ const TYPE_CONFIG: Record<
   { icon: React.ComponentProps<typeof Ionicons>['name']; color: string; bg: string; label: string }
 > = {
   medication_scheduled: { icon: 'medkit-outline', color: '#2563eb', bg: '#eff6ff', label: 'Med' },
-  feeding: { icon: 'water-outline', color: '#d97706', bg: '#fffbeb', label: 'Feed' },
+  nutrition: { icon: 'water-outline', color: '#d97706', bg: '#fffbeb', label: 'Nutrition' },
   activity: { icon: 'walk-outline', color: '#16a34a', bg: '#f0fdf4', label: 'Activity' },
 };
 
@@ -136,7 +139,10 @@ export default function TodayScreen() {
   const { items, isLoading, refetch } = useTimeline(careRecipientId);
   const { mutate: recordMedication, isPending: isMedPending } = useRecordMedication();
   const { mutate: recordActivity, isPending: isActivityPending } = useRecordActivity();
+  const { mutate: recordPRN, isPending: isPRNPending } = useRecordPRNMedication();
+  const { data: prnMedications = [], isLoading: isPRNLoading } = usePRNMedications(careRecipientId);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  const [prnSheetVisible, setPRNSheetVisible] = useState(false);
 
   const overdue = items.filter((i) => i.status === 'overdue');
   const earlierToday = items.filter((i) => i.status === 'done' || i.status === 'missed');
@@ -163,6 +169,22 @@ export default function TodayScreen() {
     }
   }
 
+  function handleRecordPRN(medicationId: string, notes: string) {
+    if (!careRecipientId || !user) return;
+    recordPRN(
+      {
+        careRecipientId,
+        prnMedicationId: medicationId,
+        carerId: user.id,
+        notes: notes.trim() || undefined,
+      },
+      {
+        onSuccess: () => setPRNSheetVisible(false),
+        onError: () => Alert.alert('Error', 'Failed to record medication. Please try again.'),
+      },
+    );
+  }
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -173,6 +195,13 @@ export default function TodayScreen() {
 
   return (
     <View style={styles.container}>
+      <Pressable
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        onPress={() => setPRNSheetVisible(true)}
+        accessibilityLabel="Record as-needed medication"
+      >
+        <Ionicons name="add" size={28} color="#fff" />
+      </Pressable>
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
@@ -251,6 +280,14 @@ export default function TodayScreen() {
         isLoading={isActivityPending}
         onConfirm={handleRecord}
         onDismiss={() => setSelectedItem(null)}
+      />
+      <PRNMedicationSheet
+        visible={prnSheetVisible}
+        medications={prnMedications}
+        isLoadingMedications={isPRNLoading}
+        isSaving={isPRNPending}
+        onConfirm={handleRecordPRN}
+        onDismiss={() => setPRNSheetVisible(false)}
       />
     </View>
   );
@@ -343,4 +380,23 @@ const styles = StyleSheet.create({
   recordBtnText: { fontSize: 12, fontWeight: '600', color: '#2563eb' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
+
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    zIndex: 10,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#7c3aed',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#7c3aed',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fabPressed: { opacity: 0.85 },
 });

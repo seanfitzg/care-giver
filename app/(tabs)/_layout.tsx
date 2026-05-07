@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const TAB_TITLES: Record<string, string> = {
   index: 'Today',
-  feed: 'Feed',
+  nutrition: 'Nutrition',
   log: 'Log',
 };
 
@@ -61,11 +61,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="feed"
+        name="nutrition"
         options={{
-          title: 'Feed',
+          title: 'Nutrition',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="newspaper-outline" size={size} color={color} />
+            <Ionicons name="water-outline" size={size} color={color} />
           ),
         }}
       />
