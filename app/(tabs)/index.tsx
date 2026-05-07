@@ -10,8 +10,10 @@ import {
   Text,
   View,
 } from 'react-native';
+import { ActivityConfirmSheet } from '@/components/ActivityConfirmSheet';
 import { MedicationConfirmSheet } from '@/components/MedicationConfirmSheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRecordActivity } from '@/hooks/useRecordActivity';
 import { useRecordMedication } from '@/hooks/useRecordMedication';
 import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
 import type { ItemStatus, ItemType, TimelineItem } from '@/hooks/useTimeline';
@@ -66,7 +68,7 @@ function TaskCard({
 }) {
   const isDone = item.status === 'done';
   const canRecord =
-    item.type === 'medication_scheduled' &&
+    (item.type === 'medication_scheduled' || item.type === 'activity') &&
     (item.status === 'overdue' || item.status === 'upcoming') &&
     !!onRecord;
 
@@ -79,13 +81,21 @@ function TaskCard({
         </Text>
         <Text style={styles.cardTime}>{formatTime(item.scheduledAt)}</Text>
         {isDone && item.completedByName && (
-          <Text style={styles.cardCarerName}>Given by {item.completedByName}</Text>
+          <Text style={styles.cardCarerName}>
+            {item.type === 'activity' ? 'Done' : 'Given'} by {item.completedByName}
+          </Text>
         )}
       </View>
       {canRecord ? (
-        <View style={styles.recordBtn}>
-          <Ionicons name="checkmark-circle-outline" size={18} color="#2563eb" />
-          <Text style={styles.recordBtnText}>Record</Text>
+        <View style={[styles.recordBtn, { backgroundColor: TYPE_CONFIG[item.type].bg }]}>
+          <Ionicons
+            name="checkmark-circle-outline"
+            size={18}
+            color={TYPE_CONFIG[item.type].color}
+          />
+          <Text style={[styles.recordBtnText, { color: TYPE_CONFIG[item.type].color }]}>
+            Record
+          </Text>
         </View>
       ) : (
         <StatusBadge status={item.status} />
@@ -124,7 +134,8 @@ function SectionHeader({ title }: { title: string }) {
 export default function TodayScreen() {
   const { careRecipientId, user } = useAuth();
   const { items, isLoading, refetch } = useTimeline(careRecipientId);
-  const { mutate: recordMedication, isPending } = useRecordMedication();
+  const { mutate: recordMedication, isPending: isMedPending } = useRecordMedication();
+  const { mutate: recordActivity, isPending: isActivityPending } = useRecordActivity();
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
 
   const overdue = items.filter((i) => i.status === 'overdue');
@@ -133,20 +144,23 @@ export default function TodayScreen() {
 
   function handleRecord(notes: string) {
     if (!selectedItem || !careRecipientId || !user) return;
-    recordMedication(
-      {
-        careRecipientId,
-        scheduledItemId: selectedItem.scheduledItemId,
-        carerId: user.id,
-        notes: notes.trim() || undefined,
-      },
-      {
+    const vars = {
+      careRecipientId,
+      scheduledItemId: selectedItem.scheduledItemId,
+      carerId: user.id,
+      notes: notes.trim() || undefined,
+    };
+    if (selectedItem.type === 'activity') {
+      recordActivity(vars, {
         onSuccess: () => setSelectedItem(null),
-        onError: () => {
-          Alert.alert('Error', 'Failed to record medication. Please try again.');
-        },
-      },
-    );
+        onError: () => Alert.alert('Error', 'Failed to record activity. Please try again.'),
+      });
+    } else {
+      recordMedication(vars, {
+        onSuccess: () => setSelectedItem(null),
+        onError: () => Alert.alert('Error', 'Failed to record medication. Please try again.'),
+      });
+    }
   }
 
   if (isLoading) {
@@ -175,12 +189,7 @@ export default function TodayScreen() {
               {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
             </Text>
             {overdue.map((item) => (
-              <TaskCard
-                key={item.key}
-                item={item}
-                variant="overdue"
-                onRecord={setSelectedItem}
-              />
+              <TaskCard key={item.key} item={item} variant="overdue" onRecord={setSelectedItem} />
             ))}
           </View>
         )}
@@ -230,9 +239,16 @@ export default function TodayScreen() {
       </ScrollView>
 
       <MedicationConfirmSheet
-        item={selectedItem}
-        visible={!!selectedItem}
-        isLoading={isPending}
+        item={selectedItem?.type === 'medication_scheduled' ? selectedItem : null}
+        visible={selectedItem?.type === 'medication_scheduled'}
+        isLoading={isMedPending}
+        onConfirm={handleRecord}
+        onDismiss={() => setSelectedItem(null)}
+      />
+      <ActivityConfirmSheet
+        item={selectedItem?.type === 'activity' ? selectedItem : null}
+        visible={selectedItem?.type === 'activity'}
+        isLoading={isActivityPending}
         onConfirm={handleRecord}
         onDismiss={() => setSelectedItem(null)}
       />
