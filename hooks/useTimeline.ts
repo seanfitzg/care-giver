@@ -13,6 +13,7 @@ export type TimelineItem = {
   scheduledAt: Date;
   status: ItemStatus;
   isCompulsory: boolean;
+  completedByName?: string;
 };
 
 type ScheduledItemRow = {
@@ -31,6 +32,13 @@ type EventLogRow = {
   scheduled_item_id: string | null;
   occurred_at: string;
   status: 'completed' | 'missed' | 'skipped';
+  carer_id: string | null;
+};
+
+export type FetchedTimeline = {
+  scheduledItems: ScheduledItemRow[];
+  todayEvents: EventLogRow[];
+  carerNames: Record<string, string>;
 };
 
 // Configurable window defaults — replace with per-user preferences once a
@@ -92,6 +100,7 @@ export function buildTimelineItems(
   scheduledItems: ScheduledItemRow[],
   todayEvents: EventLogRow[],
   now: Date,
+  carerNames: Record<string, string> = {},
   pastHours = PAST_HOURS,
   futureHours = FUTURE_HOURS,
 ): TimelineItem[] {
@@ -122,6 +131,22 @@ export function buildTimelineItems(
         status === 'overdue' || (scheduledAt >= windowStart && scheduledAt <= windowEnd);
       if (!inWindow) continue;
 
+      let completedByName: string | undefined;
+      if (status === 'done') {
+        const scheduledMs = scheduledAt.getTime();
+        const completionEvent = todayEvents.find(
+          (e) =>
+            e.scheduled_item_id === row.id &&
+            e.status === 'completed' &&
+            e.carer_id != null &&
+            new Date(e.occurred_at).getTime() >= scheduledMs - row.overdue_window_minutes * 60_000 &&
+            new Date(e.occurred_at).getTime() <= scheduledMs + row.missed_threshold_minutes * 60_000,
+        );
+        if (completionEvent?.carer_id) {
+          completedByName = carerNames[completionEvent.carer_id];
+        }
+      }
+
       items.push({
         key: `${row.id}_${scheduledAt.getTime()}`,
         scheduledItemId: row.id,
@@ -130,6 +155,7 @@ export function buildTimelineItems(
         scheduledAt,
         status,
         isCompulsory: row.is_compulsory,
+        completedByName,
       });
     }
   }
@@ -137,29 +163,38 @@ export function buildTimelineItems(
   return items.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 }
 
-async function fetchData(careRecipientId: string) {
+async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
   const { start, end } = todayBounds();
-  const [{ data: items, error: itemsErr }, { data: events, error: eventsErr }] = await Promise.all([
-    supabase
-      .from('scheduled_items')
-      .select(
-        'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory',
-      )
-      .eq('care_recipient_id', careRecipientId),
-    supabase
-      .from('event_log')
-      .select('id, scheduled_item_id, occurred_at, status')
-      .eq('care_recipient_id', careRecipientId)
-      .gte('occurred_at', start.toISOString())
-      .lte('occurred_at', end.toISOString()),
-  ]);
+  const [{ data: items, error: itemsErr }, { data: events, error: eventsErr }, { data: names, error: namesErr }] =
+    await Promise.all([
+      supabase
+        .from('scheduled_items')
+        .select(
+          'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory',
+        )
+        .eq('care_recipient_id', careRecipientId),
+      supabase
+        .from('event_log')
+        .select('id, scheduled_item_id, occurred_at, status, carer_id')
+        .eq('care_recipient_id', careRecipientId)
+        .gte('occurred_at', start.toISOString())
+        .lte('occurred_at', end.toISOString()),
+      supabase.rpc('get_carer_names', { p_care_recipient_id: careRecipientId }),
+    ]);
 
   if (itemsErr) throw itemsErr;
   if (eventsErr) throw eventsErr;
+  if (namesErr) throw namesErr;
+
+  const carerNames: Record<string, string> = {};
+  for (const row of names ?? []) {
+    carerNames[row.user_id] = row.display_name;
+  }
 
   return {
     scheduledItems: (items ?? []) as ScheduledItemRow[],
     todayEvents: (events ?? []) as EventLogRow[],
+    carerNames,
   };
 }
 
@@ -207,7 +242,12 @@ export function useTimeline(careRecipientId: string | null) {
 
   const now = new Date();
   const items = query.data
-    ? buildTimelineItems(query.data.scheduledItems, query.data.todayEvents, now)
+    ? buildTimelineItems(
+        query.data.scheduledItems,
+        query.data.todayEvents,
+        now,
+        query.data.carerNames,
+      )
     : [];
 
   return { items, isLoading: query.isLoading, error: query.error, refetch: query.refetch };

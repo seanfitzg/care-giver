@@ -11,7 +11,7 @@ A multi-tenant care coordination platform delivered as two clients sharing a sin
 - **Mobile app** (React Native + Expo) — the primary tool for on-duty carers. Used on the go during a shift on iPhone, Android, and iPad.
 - **Web app** (Next.js) — a desktop-first interface better suited to admin tasks: managing the care schedule, reviewing the full care history, and managing the carer team.
 
-The admin (parent) configures a schedule of medications, feeding sessions, and activities. On-duty carers receive push notifications and in-app alerts when tasks are due. Every action is logged against the carer who performed it, creating a full, auditable care history. Carers check in and out of duty, ensuring notifications are routed only to the person currently responsible.
+The admin (parent) configures a schedule of medications, feeding sessions, and activities. Carers receive push notifications and in-app alerts when tasks are due. Every action is logged against the carer who performed it, creating a full, auditable care history.
 
 ## User Stories
 
@@ -22,14 +22,6 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 4. As an invited carer, I want to receive an email with a secure setup link, so that I can create my account and access the app.
 5. As an admin, I want to revoke a carer's access, so that former carers can no longer view or record care events.
 6. As any user, I want to log in securely with my email and password, so that care records are protected.
-
-### Duty Management
-7. As a carer, I want to check in when I arrive, so that I start receiving notifications for the care recipient I am caring for.
-8. As a carer, I want to check out when I leave, so that I stop receiving notifications after my shift.
-9. As an admin, I want to always be considered on-duty without checking in, so that I never miss a notification.
-10. As an admin, I want to see who is currently on duty, so that I know which carers are actively responsible.
-11. As a carer, I want to see who else is currently on duty, so that I can coordinate during handovers.
-12. As an admin, I want to check a carer in or out from the duty screen, so that I can correct the duty state when a carer forgets.
 
 ### Schedule Management
 13. As an admin or senior carer, I want to create a scheduled medication with a fixed daily time, so that carers are reminded to administer it.
@@ -43,45 +35,44 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 21. As an admin or senior carer, I want to set the overdue and missed windows for feeding sessions and activities independently, so that flexibility matches clinical guidance.
 
 ### Feeding Session
-22. As an on-duty carer, I want to start a guided feeding session, so that I am walked through each bolus and rest period.
-23. As an on-duty carer, I want to see a countdown timer for the configured rest period (20 or 25 minutes) between bolus rounds, so that I know when to resume feeding.
-24. As an on-duty carer, I want the rest duration to reflect the value set in the feeding schedule, so that I follow the correct protocol without having to remember it.
-25. As an on-duty carer, I want to skip the rest period early if the care recipient is ready, so that I am not forced to wait for the timer when it is clinically appropriate to proceed.
-26. As an on-duty carer, I want to record the start time of a feeding session automatically, so that I do not need to enter it manually.
-27. As an on-duty carer, I want to see an elapsed-time counter during an active session, so that I can track how long the overall feed is taking.
-28. As an on-duty carer, I want the number of bolus rounds completed to be recorded when I end a session, so that the log shows how much of the feed was given.
-29. As an on-duty carer, I want to record the end time of a feeding session when I mark it complete, so that the full duration is captured.
-30. As an on-duty carer, I want to add a note to a feeding session, so that I can record if a feed was incomplete or the care recipient showed discomfort.
-31. As an on-duty carer, I want the feeding session log to record which carer administered it, so that there is an accurate audit trail.
-32. As an on-duty carer, I want to abandon a feeding session with a confirmation step, so that an incomplete session is recorded and I am not returned to the timeline by accident.
+22. As a carer, I want to start a guided feeding session, so that I am walked through each bolus and rest period.
+23. As a carer, I want to see a countdown timer for the configured rest period (20 or 25 minutes) between bolus rounds, so that I know when to resume feeding.
+24. As a carer, I want the rest duration to reflect the value set in the feeding schedule, so that I follow the correct protocol without having to remember it.
+25. As a carer, I want to skip the rest period early if the care recipient is ready, so that I am not forced to wait for the timer when it is clinically appropriate to proceed.
+26. As a carer, I want to record the start time of a feeding session automatically, so that I do not need to enter it manually.
+27. As a carer, I want to see an elapsed-time counter during an active session, so that I can track how long the overall feed is taking.
+28. As a carer, I want the number of bolus rounds completed to be recorded when I end a session, so that the log shows how much of the feed was given.
+29. As a carer, I want to record the end time of a feeding session when I mark it complete, so that the full duration is captured.
+30. As a carer, I want to add a note to a feeding session, so that I can record if a feed was incomplete or the care recipient showed discomfort.
+31. As a carer, I want the feeding session log to record which carer administered it, so that there is an accurate audit trail.
+32. As a carer, I want to abandon a feeding session with a confirmation step, so that an incomplete session is recorded and I am not returned to the timeline by accident.
 
 ### Medication Recording
-33. As an on-duty carer, I want to mark a scheduled medication as given, so that other carers know it has been administered.
-34. As an on-duty carer, I want to record an as-needed medication at any time, so that ad-hoc doses are always captured.
-35. As an on-duty carer, I want to add a note when recording any medication, so that I can capture context (e.g. refused, partial dose).
+33. As a carer, I want to mark a scheduled medication as given, so that other carers know it has been administered.
+34. As a carer, I want to record an as-needed medication at any time, so that ad-hoc doses are always captured.
+35. As a carer, I want to add a note when recording any medication, so that I can capture context (e.g. refused, partial dose).
 36. As any user, I want to see which carer recorded each medication event, so that accountability is clear.
 
 ### Activity Recording
-37. As an on-duty carer, I want to mark a scheduled activity as complete, so that the log reflects what has been done.
-38. As an on-duty carer, I want to add a note when completing an activity, so that I can record observations.
+37. As a carer, I want to mark a scheduled activity as complete, so that the log reflects what has been done.
+38. As a carer, I want to add a note when completing an activity, so that I can record observations.
 
 ### Notifications & Alerts
-39. As an on-duty carer, I want to receive a push notification when a task is due, so that I am reminded even when the app is in the background.
-40. As an on-duty carer, I want to see a prominent in-app alert for any overdue task, so that nothing is missed when I open the app.
-41. As an on-duty carer, I want overdue tasks to be visually distinct (e.g. red) in the timeline, so that I can prioritise at a glance.
-42. As an on-duty carer, I want to see a "missed" label on tasks that passed their missed threshold without being completed, so that the record is accurate.
+39. As a carer, I want to receive a push notification when a task is due, so that I am reminded even when the app is in the background.
+40. As a carer, I want to see a prominent in-app alert for any overdue task, so that nothing is missed when I open the app.
+41. As a carer, I want overdue tasks to be visually distinct (e.g. red) in the timeline, so that I can prioritise at a glance.
+42. As a carer, I want to see a "missed" label on tasks that passed their missed threshold without being completed, so that the record is accurate.
 43. As a user, I want to see a clear connectivity warning when the app is offline, so that I know notifications may not be reliable.
-44. As an off-duty carer, I want to receive no notifications, so that I am not disturbed outside my shift.
 
 ### Bulk Catch-Up
-45. As an on-duty carer, I want to mark all overdue events as complete in one action, so that I can quickly catch up the app record after a period of care without logging.
-46. As an on-duty carer, I want to add a single note that applies to the entire bulk catch-up, so that I can record context (e.g. "carer was present, app not used") without repeating it for each event.
+45. As a carer, I want to mark all overdue events as complete in one action, so that I can quickly catch up the app record after a period of care without logging.
+46. As a carer, I want to add a single note that applies to the entire bulk catch-up, so that I can record context (e.g. "carer was present, app not used") without repeating it for each event.
 47. As any user, I want bulk-confirmed events to be visually distinguishable in the history log, so that it is clear they were confirmed together rather than individually at the time.
 48. As an admin, I want bulk-confirmed events to be attributed to the carer who performed the catch-up, so that accountability is maintained even when recording was delayed.
 
 ### Timeline View
-50. As an on-duty carer, I want to see a rolling timeline of today's tasks (past and upcoming), so that I have a full picture of the care day.
-51. As an on-duty carer, I want the timeline window to be configurable (e.g. past 2 hours, next 6 hours), so that it matches my working style.
+50. As a carer, I want to see a rolling timeline of today's tasks (past and upcoming), so that I have a full picture of the care day.
+51. As a carer, I want the timeline window to be configurable (e.g. past 2 hours, next 6 hours), so that it matches my working style.
 52. As any user, I want completed tasks to be visually distinct from pending tasks in the timeline, so that I can see progress at a glance.
 53. As any user, I want overdue tasks to appear prominently at the top of the timeline, so that urgent items are never buried.
 
@@ -112,20 +103,12 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 **Auth & Roles**
 - Supabase Auth handles all authentication (email/password, invite flow).
 - Three roles: Admin, Senior Carer, Carer — stored in a `user_roles` table scoped to a care recipient.
-- Admins are always considered on-duty; no check-in logic applies to them.
 - Role is assigned at invite time; admins can change a user's role after the fact.
 
 **Care Recipient (Multi-Tenancy)**
 - A `care_recipients` table is the root tenant. All schedules, logs, duty records, and carer assignments are foreign-keyed to a `care_recipient_id`.
 - An admin can have one care recipient initially; the schema supports multiple in future.
 - Row-level security (RLS) in Supabase enforces isolation between families.
-
-**Carer Duty**
-- A `duty_sessions` table records check-in and check-out timestamps per carer per care recipient.
-- An open session (no check-out) means the carer is on-duty.
-- Admins have a synthetic always-on-duty status — no duty session required.
-- "On-duty" is resolved at notification dispatch time by querying open duty sessions + admin role.
-- Admins can manually open or close a duty session for any carer from the duty screen.
 
 **Schedule Engine**
 - A `scheduled_items` table stores all recurring tasks with a `type` field: `medication_scheduled`, `feeding`, `activity`.
@@ -151,7 +134,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 - Expo Push Notifications used for mobile; web push for browser.
 - Device tokens stored in a `push_tokens` table, linked to `user_id`.
 - Notifications dispatched via a Supabase Edge Function triggered on a schedule (every minute).
-- At dispatch time, the function resolves on-duty carers, finds due items, and sends to their registered tokens.
+- At dispatch time, the function finds due items and sends to all carers' registered tokens.
 - In-app alerts are driven by a Supabase Realtime subscription on the `event_log` and `scheduled_items` tables.
 
 **Timeline View**
@@ -182,7 +165,6 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 ### Schema Overview
 - `care_recipients` — root tenant
 - `user_roles` — role per user per care recipient
-- `duty_sessions` — check-in/check-out per carer
 - `scheduled_items` — all recurring tasks; feeding items include `bolus_rest_minutes`
 - `feeding_sessions` — guided feeding records, including `bolus_rounds_completed`
 - `event_log` — append-only audit log
@@ -224,14 +206,6 @@ Good tests verify external behaviour, not implementation details. A test should 
 - Verify that events already marked missed are not included in the bulk catch-up scope.
 - Verify that overdue feeding sessions are included in bulk catch-up and produce a `feeding_sessions` record with `bulk_confirmed = true` and `bolus_rounds_completed = null`.
 - Verify that after a bulk catch-up, the timeline shows all affected items — including feeding sessions — as completed.
-
-**Carer Duty**
-- Verify that a carer who has checked in but not checked out is considered on-duty.
-- Verify that a carer who has checked out is not on-duty.
-- Verify that an admin is always considered on-duty regardless of duty session state.
-- Verify that multiple carers can be on-duty simultaneously.
-- Verify that notifications are dispatched only to on-duty carers.
-- Verify that an admin can open or close a duty session on behalf of another carer.
 
 ---
 
