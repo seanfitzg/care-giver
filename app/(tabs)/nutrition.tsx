@@ -1,10 +1,10 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-export default function FeedScreen() {
+export default function NutritionScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Feed</Text>
-      <Text style={styles.placeholder}>Feeding session runner coming soon</Text>
+      <Text style={styles.title}>Nutrition</Text>
+      <Text style={styles.placeholder}>Nutrition session runner coming soon</Text>
     </View>
   );
 }

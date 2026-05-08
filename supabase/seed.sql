@@ -125,11 +125,11 @@ INSERT INTO public.scheduled_items (
     '20:00', null, 30, 90, false, null,
     '00000000-0000-0000-0000-000000000001'
   ),
-  -- Feeding (every 4 hours, 20 min bolus rest)
+  -- Nutrition (every 4 hours, 20 min bolus rest)
   (
     'bbbbbbbb-0000-0000-0000-000000000003',
     'aaaaaaaa-0000-0000-0000-000000000001',
-    'feeding', 'PEG Feed',
+    'nutrition', 'PEG Feed',
     null, 240, 30, 120, true, 20,
     '00000000-0000-0000-0000-000000000001'
   ),
@@ -172,7 +172,7 @@ INSERT INTO public.event_log (
   -- PEG Feed (08:00 slot): completed
   (
     'aaaaaaaa-0000-0000-0000-000000000001',
-    'feeding',
+    'nutrition',
     'bbbbbbbb-0000-0000-0000-000000000003',
     '00000000-0000-0000-0000-000000000002',
     current_date + interval '8 hours 6 minutes',
@@ -190,7 +190,7 @@ INSERT INTO public.event_log (
   -- PEG Feed (12:00 slot): missed
   (
     'aaaaaaaa-0000-0000-0000-000000000001',
-    'feeding',
+    'nutrition',
     'bbbbbbbb-0000-0000-0000-000000000003',
     '00000000-0000-0000-0000-000000000002',
     current_date + interval '12 hours 8 minutes',

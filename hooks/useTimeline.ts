@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
-export type ItemType = 'medication_scheduled' | 'feeding' | 'activity';
+export type ItemType = 'medication_scheduled' | 'nutrition' | 'activity';
 export type ItemStatus = 'overdue' | 'done' | 'missed' | 'upcoming';
 
 export type TimelineItem = {
@@ -60,7 +60,7 @@ function scheduledTimeToday(timeOfDay: string): Date {
   return new Date(start.getTime() + (h * 60 + m) * 60_000);
 }
 
-function generateFeedingTimes(intervalMinutes: number): Date[] {
+function generateNutritionTimes(intervalMinutes: number): Date[] {
   const { start, end } = todayBounds();
   const times: Date[] = [];
   let t = start.getTime();
@@ -111,8 +111,8 @@ export function buildTimelineItems(
 
   for (const row of scheduledItems) {
     const times: Date[] =
-      row.type === 'feeding' && row.interval_minutes
-        ? generateFeedingTimes(row.interval_minutes)
+      row.type === 'nutrition' && row.interval_minutes
+        ? generateNutritionTimes(row.interval_minutes)
         : row.time_of_day
           ? [scheduledTimeToday(row.time_of_day)]
           : [];
