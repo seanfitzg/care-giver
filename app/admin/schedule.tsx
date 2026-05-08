@@ -28,6 +28,7 @@ type ScheduledItem = {
   missed_threshold_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
+  bolus_rounds: number | null;
   duration_minutes: number | null;
 };
 
@@ -44,6 +45,7 @@ type ItemForm = {
   time_of_day: string;
   interval_minutes: string;
   bolus_rest_minutes: '20' | '25';
+  bolus_rounds: string;
   overdue_window_minutes: string;
   missed_threshold_minutes: string;
   is_compulsory: boolean;
@@ -85,6 +87,7 @@ function blankItemForm(type: ItemType): ItemForm {
     time_of_day: '',
     interval_minutes: '180',
     bolus_rest_minutes: '20',
+    bolus_rounds: '',
     overdue_window_minutes: '15',
     missed_threshold_minutes: '60',
     is_compulsory: true,
@@ -100,6 +103,7 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     time_of_day: fmtTime(item.time_of_day),
     interval_minutes: String(item.interval_minutes ?? 180),
     bolus_rest_minutes: item.bolus_rest_minutes === 25 ? '25' : '20',
+    bolus_rounds: item.bolus_rounds != null ? String(item.bolus_rounds) : '',
     overdue_window_minutes: String(item.overdue_window_minutes),
     missed_threshold_minutes: String(item.missed_threshold_minutes),
     is_compulsory: item.is_compulsory,
@@ -130,7 +134,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,duration_minutes',
+          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,bolus_rounds,duration_minutes',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -178,6 +182,8 @@ export default function ScheduleScreen() {
         payload.interval_minutes = interval;
         payload.bolus_rest_minutes = parseInt(form.bolus_rest_minutes, 10);
         payload.time_of_day = form.time_of_day ? parseTime(form.time_of_day) : null;
+        const rounds = parseInt(form.bolus_rounds, 10);
+        payload.bolus_rounds = rounds > 0 ? rounds : null;
       } else {
         const time = parseTime(form.time_of_day);
         if (!time) throw new Error('Enter a valid time (HH:MM).');
@@ -309,7 +315,13 @@ export default function ScheduleScreen() {
             <ItemRow
               key={item.id}
               label={item.name}
-              sub={`Every ${fmtDuration(item.interval_minutes ?? 0)} · ${fmtDuration(item.bolus_rest_minutes ?? 0)} bolus rest`}
+              sub={[
+                `Every ${fmtDuration(item.interval_minutes ?? 0)}`,
+                `${fmtDuration(item.bolus_rest_minutes ?? 0)} bolus rest`,
+                item.bolus_rounds != null ? `${item.bolus_rounds} bolus rounds` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
               onEdit={() => setItemForm(itemFormFromItem(item))}
               onDelete={() => confirmDelete(item)}
             />
@@ -496,6 +508,15 @@ function ScheduledItemModal({
               </Pressable>
             ))}
           </View>
+          <FieldLabel>Target bolus rounds (optional)</FieldLabel>
+          <TextInput
+            style={s.input}
+            value={form.bolus_rounds}
+            onChangeText={(v) => set({ bolus_rounds: v })}
+            keyboardType="number-pad"
+            placeholder="e.g. 4 (leave blank if open-ended)"
+            placeholderTextColor="#9ca3af"
+          />
         </>
       )}
 
