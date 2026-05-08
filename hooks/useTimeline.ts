@@ -14,6 +14,8 @@ export type TimelineItem = {
   status: ItemStatus;
   isCompulsory: boolean;
   completedByName?: string;
+  bolusRestMinutes?: number;
+  bolusRounds?: number;
 };
 
 type ScheduledItemRow = {
@@ -25,6 +27,8 @@ type ScheduledItemRow = {
   overdue_window_minutes: number;
   missed_threshold_minutes: number;
   is_compulsory: boolean;
+  bolus_rest_minutes: number | null;
+  bolus_rounds: number | null;
 };
 
 type EventLogRow = {
@@ -167,6 +171,8 @@ export function buildTimelineItems(
         status,
         isCompulsory: row.is_compulsory,
         completedByName,
+        bolusRestMinutes: row.bolus_rest_minutes ?? undefined,
+        bolusRounds: row.bolus_rounds ?? undefined,
       });
     }
   }
@@ -181,7 +187,7 @@ async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
       supabase
         .from('scheduled_items')
         .select(
-          'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory',
+          'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory, bolus_rest_minutes, bolus_rounds',
         )
         .eq('care_recipient_id', careRecipientId),
       supabase

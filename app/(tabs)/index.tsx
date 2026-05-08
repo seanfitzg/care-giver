@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -71,7 +72,6 @@ function TaskCard({
 }) {
   const isDone = item.status === 'done';
   const canRecord =
-    (item.type === 'medication_scheduled' || item.type === 'activity') &&
     (item.status === 'overdue' || item.status === 'upcoming') &&
     !!onRecord;
 
@@ -92,12 +92,12 @@ function TaskCard({
       {canRecord ? (
         <View style={[styles.recordBtn, { backgroundColor: TYPE_CONFIG[item.type].bg }]}>
           <Ionicons
-            name="checkmark-circle-outline"
+            name={item.type === 'nutrition' ? 'play-circle-outline' : 'checkmark-circle-outline'}
             size={18}
             color={TYPE_CONFIG[item.type].color}
           />
           <Text style={[styles.recordBtnText, { color: TYPE_CONFIG[item.type].color }]}>
-            Record
+            {item.type === 'nutrition' ? 'Start' : 'Record'}
           </Text>
         </View>
       ) : (
@@ -135,6 +135,7 @@ function SectionHeader({ title }: { title: string }) {
 }
 
 export default function TodayScreen() {
+  const router = useRouter();
   const { careRecipientId, user } = useAuth();
   const { items, isLoading, refetch } = useTimeline(careRecipientId);
   const { mutate: recordMedication, isPending: isMedPending } = useRecordMedication();
@@ -147,6 +148,22 @@ export default function TodayScreen() {
   const overdue = items.filter((i) => i.status === 'overdue');
   const earlierToday = items.filter((i) => i.status === 'done' || i.status === 'missed');
   const upcoming = items.filter((i) => i.status === 'upcoming');
+
+  function handleItemTap(item: TimelineItem) {
+    if (item.type === 'nutrition') {
+      router.push({
+        pathname: '/nutrition-session',
+        params: {
+          scheduledItemId: item.scheduledItemId,
+          name: item.name,
+          bolusRestMinutes: String(item.bolusRestMinutes ?? 20),
+          bolusRounds: String(item.bolusRounds ?? 0),
+        },
+      } as never);
+    } else {
+      setSelectedItem(item);
+    }
+  }
 
   function handleRecord(notes: string) {
     if (!selectedItem || !careRecipientId || !user) return;
@@ -218,7 +235,7 @@ export default function TodayScreen() {
               {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
             </Text>
             {overdue.map((item) => (
-              <TaskCard key={item.key} item={item} variant="overdue" onRecord={setSelectedItem} />
+              <TaskCard key={item.key} item={item} variant="overdue" onRecord={handleItemTap} />
             ))}
           </View>
         )}
@@ -257,7 +274,7 @@ export default function TodayScreen() {
                   {idx < upcoming.length - 1 && <View style={styles.spineLine} />}
                 </View>
                 <View style={styles.cardWrapper}>
-                  <TaskCard item={item} onRecord={setSelectedItem} />
+                  <TaskCard item={item} onRecord={handleItemTap} />
                 </View>
               </View>
             ))}
