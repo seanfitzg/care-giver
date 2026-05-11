@@ -106,7 +106,7 @@ INSERT INTO public.scheduled_items (
   id, care_recipient_id, type, name,
   time_of_day, interval_minutes,
   overdue_window_minutes, missed_threshold_minutes,
-  is_compulsory, bolus_rest_minutes, bolus_rounds,
+  is_compulsory, bolus_rest_minutes, nutrition_type,
   created_by
 ) VALUES
   -- Morning medication (compulsory)
@@ -125,12 +125,12 @@ INSERT INTO public.scheduled_items (
     '20:00', null, 30, 90, false, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
-  -- Nutrition (every 4 hours, 20 min bolus rest, 4 bolus rounds)
+  -- Nutrition (bolus, every 4 hours, 20 min bolus rest)
   (
     'bbbbbbbb-0000-0000-0000-000000000003',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'nutrition', 'PEG Feed',
-    null, 240, 30, 120, true, 20, 4,
+    null, 240, 30, 120, true, 20, 'bolus',
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Stander activity
@@ -158,7 +158,7 @@ ON CONFLICT (id) DO UPDATE SET
   missed_threshold_minutes = EXCLUDED.missed_threshold_minutes,
   is_compulsory = EXCLUDED.is_compulsory,
   bolus_rest_minutes = EXCLUDED.bolus_rest_minutes,
-  bolus_rounds = EXCLUDED.bolus_rounds;
+  nutrition_type = EXCLUDED.nutrition_type;
 
 -- ----------------------------------------------------------------
 -- Event log — past events for today so the timeline isn't empty.
@@ -166,6 +166,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- time; these entries represent items that were explicitly logged.
 -- ----------------------------------------------------------------
 
+DELETE FROM public.nutrition_sessions WHERE care_recipient_id = 'aaaaaaaa-0000-0000-0000-000000000001';
 DELETE FROM public.event_log WHERE care_recipient_id = 'aaaaaaaa-0000-0000-0000-000000000001';
 
 INSERT INTO public.event_log (

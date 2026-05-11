@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 
 export type ItemType = 'medication_scheduled' | 'nutrition' | 'activity';
 export type ItemStatus = 'overdue' | 'done' | 'missed' | 'upcoming';
+export type NutritionType = 'bolus' | 'oral_self' | 'oral_carer';
 
 export type TimelineItem = {
   key: string;
@@ -15,7 +16,7 @@ export type TimelineItem = {
   isCompulsory: boolean;
   completedByName?: string;
   bolusRestMinutes?: number;
-  bolusRounds?: number;
+  nutritionType?: NutritionType;
 };
 
 type ScheduledItemRow = {
@@ -28,7 +29,7 @@ type ScheduledItemRow = {
   missed_threshold_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
-  bolus_rounds: number | null;
+  nutrition_type: NutritionType | null;
 };
 
 type EventLogRow = {
@@ -172,7 +173,7 @@ export function buildTimelineItems(
         isCompulsory: row.is_compulsory,
         completedByName,
         bolusRestMinutes: row.bolus_rest_minutes ?? undefined,
-        bolusRounds: row.bolus_rounds ?? undefined,
+        nutritionType: row.nutrition_type ?? undefined,
       });
     }
   }
@@ -187,7 +188,7 @@ async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
       supabase
         .from('scheduled_items')
         .select(
-          'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory, bolus_rest_minutes, bolus_rounds',
+          'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
         )
         .eq('care_recipient_id', careRecipientId),
       supabase
@@ -229,7 +230,7 @@ export function useTimeline(careRecipientId: string | null) {
     if (!careRecipientId) return;
 
     const channel = supabase
-      .channel(`timeline:${careRecipientId}`)
+      .channel(`timeline:${careRecipientId}:${Date.now()}`)
       .on(
         'postgres_changes',
         {
