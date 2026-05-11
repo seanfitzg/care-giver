@@ -96,15 +96,15 @@ supabase/
 
 ## Useful commands
 
-| Command | Description |
-|---|---|
-| `npm start` | Start the Expo dev server |
-| `npm run type-check` | TypeScript type-check (no emit) |
-| `npm run lint` | ESLint |
-| `npm run supabase:start` | Start local Supabase stack |
-| `npm run supabase:stop` | Stop local Supabase stack |
-| `npx supabase db reset` | Reset DB and re-run migrations + seed |
-| `npx supabase db diff` | Diff schema changes into a new migration |
+| Command                  | Description                              |
+| ------------------------ | ---------------------------------------- |
+| `npm start`              | Start the Expo dev server                |
+| `npm run type-check`     | TypeScript type-check (no emit)          |
+| `npm run lint`           | ESLint                                   |
+| `npm run supabase:start` | Start local Supabase stack               |
+| `npm run supabase:stop`  | Stop local Supabase stack                |
+| `npx supabase db reset`  | Reset DB and re-run migrations + seed    |
+| `npx supabase db diff`   | Diff schema changes into a new migration |
 
 ---
 

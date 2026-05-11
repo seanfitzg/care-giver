@@ -51,7 +51,9 @@ function formatDateTime(iso: string): string {
     d.getFullYear() === yesterday.getFullYear();
   if (isYesterday) return `Yesterday ${time}`;
 
-  return d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ` ${time}`;
+  return (
+    d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ` ${time}`
+  );
 }
 
 function entryName(entry: CareLogEntry): string {
@@ -124,9 +126,7 @@ export default function LogScreen() {
       {entries.length === 0 ? (
         <Text style={styles.empty}>No events recorded yet.</Text>
       ) : (
-        entries.map((entry) => (
-          <LogCard key={entry.id} entry={entry} carerNames={carerNames} />
-        ))
+        entries.map((entry) => <LogCard key={entry.id} entry={entry} carerNames={carerNames} />)
       )}
     </ScrollView>
   );

@@ -249,9 +249,7 @@ export default function NutritionSessionScreen() {
         <ScrollView contentContainerStyle={contentStyle} keyboardShouldPersistTaps="handled">
           <View style={styles.prestartCard}>
             <Text style={styles.prestartTitle}>Set rest period</Text>
-            <Text style={styles.prestartBody}>
-              How long should the rest be between boluses?
-            </Text>
+            <Text style={styles.prestartBody}>How long should the rest be between boluses?</Text>
             <View style={styles.restInputRow}>
               <TextInput
                 style={[styles.restInput, isTablet && styles.restInputTablet]}
@@ -265,14 +263,9 @@ export default function NutritionSessionScreen() {
             </View>
           </View>
 
-          {startError ? (
-            <Text style={styles.endErrorText}>{startError}</Text>
-          ) : null}
+          {startError ? <Text style={styles.endErrorText}>{startError}</Text> : null}
 
-          <Pressable
-            style={styles.primaryBtn}
-            onPress={handleStartBolusSession}
-          >
+          <Pressable style={styles.primaryBtn} onPress={handleStartBolusSession}>
             <Ionicons name="play-circle-outline" size={20} color="#fff" />
             <Text style={styles.primaryBtnText}>Start session</Text>
           </Pressable>
@@ -444,9 +437,7 @@ export default function NutritionSessionScreen() {
               onPress={() => setEndConfirmVisible(true)}
               disabled={isBusy || !sessionId}
             >
-              <Text style={styles.endBtnText}>
-                {isEnding ? 'Saving...' : 'End session'}
-              </Text>
+              <Text style={styles.endBtnText}>{isEnding ? 'Saving...' : 'End session'}</Text>
             </Pressable>
           </>
         ) : (
@@ -512,7 +503,14 @@ const styles = StyleSheet.create({
   abandonText: { color: '#dc2626' },
 
   content: { padding: 20, gap: 16, paddingBottom: 40 },
-  contentTablet: { padding: 40, gap: 24, paddingBottom: 60, maxWidth: 600, alignSelf: 'center', width: '100%' },
+  contentTablet: {
+    padding: 40,
+    gap: 24,
+    paddingBottom: 60,
+    maxWidth: 600,
+    alignSelf: 'center',
+    width: '100%',
+  },
 
   // ── Prestart ────────────────────────────────────────────────────────────
   prestartCard: {
@@ -546,7 +544,13 @@ const styles = StyleSheet.create({
 
   // ── Elapsed timer ───────────────────────────────────────────────────────
   elapsedBlock: { alignItems: 'center', paddingVertical: 24 },
-  elapsedTime: { fontSize: 52, fontWeight: '200', color: '#111827', letterSpacing: 2, fontVariant: ['tabular-nums'] },
+  elapsedTime: {
+    fontSize: 52,
+    fontWeight: '200',
+    color: '#111827',
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
+  },
   elapsedTimeTablet: { fontSize: 72 },
   elapsedLabel: { fontSize: 13, color: '#6b7280', marginTop: 4 },
 
@@ -561,10 +565,22 @@ const styles = StyleSheet.create({
     borderColor: '#bfdbfe',
   },
   phaseCardRest: { backgroundColor: '#fffbeb', borderColor: '#fde68a' },
-  phaseLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 },
+  phaseLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   phaseName: { fontSize: 28, fontWeight: '700', color: '#1d4ed8' },
   phaseNameTablet: { fontSize: 36 },
-  restCountdown: { fontSize: 48, fontWeight: '200', color: '#92400e', letterSpacing: 2, fontVariant: ['tabular-nums'] },
+  restCountdown: {
+    fontSize: 48,
+    fontWeight: '200',
+    color: '#92400e',
+    letterSpacing: 2,
+    fontVariant: ['tabular-nums'],
+  },
   restCountdownTablet: { fontSize: 64 },
   restSubLabel: { fontSize: 13, color: '#92400e' },
   skipBtn: {
@@ -639,7 +655,12 @@ const styles = StyleSheet.create({
   // ── Error screen ────────────────────────────────────────────────────────
   errorContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
   errorText: { fontSize: 15, color: '#dc2626', textAlign: 'center' },
-  backBtn: { backgroundColor: '#f3f4f6', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 12 },
+  backBtn: {
+    backgroundColor: '#f3f4f6',
+    borderRadius: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
   backBtnText: { fontSize: 15, color: '#374151', fontWeight: '600' },
 
   // ── Modals ──────────────────────────────────────────────────────────────
@@ -661,7 +682,13 @@ const styles = StyleSheet.create({
   modalTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
   modalBody: { fontSize: 14, color: '#6b7280', lineHeight: 20 },
   modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
-  modalBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 10 },
+  modalBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 10,
+  },
   modalBtnCancel: { backgroundColor: '#f3f4f6' },
   modalBtnCancelText: { fontSize: 15, fontWeight: '600', color: '#374151' },
   modalBtnAbandon: { backgroundColor: '#dc2626' },

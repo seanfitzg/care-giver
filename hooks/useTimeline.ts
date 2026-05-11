@@ -128,9 +128,7 @@ export function buildTimelineItems(
       // for subsequent occurrences use the previous occurrence's missed-threshold boundary
       // to avoid double-attributing one event to two slots.
       const earliestMs =
-        i === 0
-          ? dayStartMs
-          : times[i - 1].getTime() + row.missed_threshold_minutes * 60_000;
+        i === 0 ? dayStartMs : times[i - 1].getTime() + row.missed_threshold_minutes * 60_000;
 
       const status = computeStatus(
         scheduledAt,
@@ -183,22 +181,25 @@ export function buildTimelineItems(
 
 async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
   const { start, end } = todayBounds();
-  const [{ data: items, error: itemsErr }, { data: events, error: eventsErr }, { data: names, error: namesErr }] =
-    await Promise.all([
-      supabase
-        .from('scheduled_items')
-        .select(
-          'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
-        )
-        .eq('care_recipient_id', careRecipientId),
-      supabase
-        .from('event_log')
-        .select('id, scheduled_item_id, occurred_at, status, carer_id')
-        .eq('care_recipient_id', careRecipientId)
-        .gte('occurred_at', start.toISOString())
-        .lte('occurred_at', end.toISOString()),
-      supabase.rpc('get_carer_names', { p_care_recipient_id: careRecipientId }),
-    ]);
+  const [
+    { data: items, error: itemsErr },
+    { data: events, error: eventsErr },
+    { data: names, error: namesErr },
+  ] = await Promise.all([
+    supabase
+      .from('scheduled_items')
+      .select(
+        'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
+      )
+      .eq('care_recipient_id', careRecipientId),
+    supabase
+      .from('event_log')
+      .select('id, scheduled_item_id, occurred_at, status, carer_id')
+      .eq('care_recipient_id', careRecipientId)
+      .gte('occurred_at', start.toISOString())
+      .lte('occurred_at', end.toISOString()),
+    supabase.rpc('get_carer_names', { p_care_recipient_id: careRecipientId }),
+  ]);
 
   if (itemsErr) throw itemsErr;
   if (eventsErr) throw eventsErr;

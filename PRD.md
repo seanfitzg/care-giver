@@ -16,6 +16,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 ## User Stories
 
 ### Authentication & Onboarding
+
 1. As an admin, I want to create a care recipient profile, so that all schedules and logs are scoped to the person in my care.
 2. As an admin, I want to invite carers by email, so that they can access the app without me sharing credentials.
 3. As an admin, I want to assign a role (Senior Carer or Carer) when inviting someone, so that access levels are set from the start.
@@ -24,6 +25,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 6. As any user, I want to log in securely with my email and password, so that care records are protected.
 
 ### Schedule Management
+
 13. As an admin or senior carer, I want to create a scheduled medication with a fixed daily time, so that carers are reminded to administer it.
 14. As an admin or senior carer, I want to flag a medication as a supplement (non-compulsory), so that a missed dose is treated less critically than a compulsory medication.
 15. As an admin or senior carer, I want to set a per-medication overdue window, so that the system accounts for medications with different time tolerances.
@@ -35,6 +37,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 21. As an admin or senior carer, I want to set the overdue and missed windows for feeding sessions and activities independently, so that flexibility matches clinical guidance.
 
 ### Feeding Session
+
 22. As a carer, I want to start a guided feeding session, so that I am walked through each bolus and rest period.
 23. As a carer, I want to see a countdown timer for the configured rest period (20 or 25 minutes) between bolus rounds, so that I know when to resume feeding.
 24. As a carer, I want the rest duration to reflect the value set in the feeding schedule, so that I follow the correct protocol without having to remember it.
@@ -48,16 +51,19 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 32. As a carer, I want to abandon a feeding session with a confirmation step, so that an incomplete session is recorded and I am not returned to the timeline by accident.
 
 ### Medication Recording
+
 33. As a carer, I want to mark a scheduled medication as given, so that other carers know it has been administered.
 34. As a carer, I want to record an as-needed medication at any time, so that ad-hoc doses are always captured.
 35. As a carer, I want to add a note when recording any medication, so that I can capture context (e.g. refused, partial dose).
 36. As any user, I want to see which carer recorded each medication event, so that accountability is clear.
 
 ### Activity Recording
+
 37. As a carer, I want to mark a scheduled activity as complete, so that the log reflects what has been done.
 38. As a carer, I want to add a note when completing an activity, so that I can record observations.
 
 ### Notifications & Alerts
+
 39. As a carer, I want to receive a push notification when a task is due, so that I am reminded even when the app is in the background.
 40. As a carer, I want to see a prominent in-app alert for any overdue task, so that nothing is missed when I open the app.
 41. As a carer, I want overdue tasks to be visually distinct (e.g. red) in the timeline, so that I can prioritise at a glance.
@@ -65,24 +71,28 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 43. As a user, I want to see a clear connectivity warning when the app is offline, so that I know notifications may not be reliable.
 
 ### Bulk Catch-Up
+
 45. As a carer, I want to mark all overdue events as complete in one action, so that I can quickly catch up the app record after a period of care without logging.
 46. As a carer, I want to add a single note that applies to the entire bulk catch-up, so that I can record context (e.g. "carer was present, app not used") without repeating it for each event.
 47. As any user, I want bulk-confirmed events to be visually distinguishable in the history log, so that it is clear they were confirmed together rather than individually at the time.
 48. As an admin, I want bulk-confirmed events to be attributed to the carer who performed the catch-up, so that accountability is maintained even when recording was delayed.
 
 ### Timeline View
+
 50. As a carer, I want to see a rolling timeline of today's tasks (past and upcoming), so that I have a full picture of the care day.
 51. As a carer, I want the timeline window to be configurable (e.g. past 2 hours, next 6 hours), so that it matches my working style.
 52. As any user, I want completed tasks to be visually distinct from pending tasks in the timeline, so that I can see progress at a glance.
 53. As any user, I want overdue tasks to appear prominently at the top of the timeline, so that urgent items are never buried.
 
 ### History & Log
+
 54. As an admin, I want to view a log of all care events for any date range, so that I can review what happened over time.
 55. As any user, I want to filter the log by event type (medication, feeding, activity, missed), so that I can find specific records quickly.
 56. As any user, I want each log entry to show the carer, the time, any notes, and (for feeding sessions) the number of bolus rounds completed, so that the record is complete.
 57. As an admin, I want to see missed events in the log, so that gaps in care are visible.
 
 ### Platform & Device Support
+
 58. As a carer, I want to use the app on my iPhone, so that I can act on reminders while moving around the house.
 59. As a carer, I want to use the app on my Android phone, so that I am not required to own an Apple device.
 60. As an admin, I want to use the app on an iPad, so that I have a larger screen for reviewing the schedule and care history.
@@ -91,6 +101,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 63. As an on-duty carer using the web app, I want to receive browser push notifications when a task is due, so that I am reminded even when the browser tab is in the background.
 
 ### Multi-Tenancy
+
 64. As an admin, I want my care recipient's data to be completely isolated from other accounts using the app, so that privacy is maintained.
 65. As an admin, I want to set up a care recipient profile with a name and date of birth, so that the app is personalised to the person in my care.
 
@@ -101,16 +112,19 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 ### Modules
 
 **Auth & Roles**
+
 - Supabase Auth handles all authentication (email/password, invite flow).
 - Three roles: Admin, Senior Carer, Carer — stored in a `user_roles` table scoped to a care recipient.
 - Role is assigned at invite time; admins can change a user's role after the fact.
 
 **Care Recipient (Multi-Tenancy)**
+
 - A `care_recipients` table is the root tenant. All schedules, logs, duty records, and carer assignments are foreign-keyed to a `care_recipient_id`.
 - An admin can have one care recipient initially; the schema supports multiple in future.
 - Row-level security (RLS) in Supabase enforces isolation between families.
 
 **Schedule Engine**
+
 - A `scheduled_items` table stores all recurring tasks with a `type` field: `medication_scheduled`, `feeding`, `activity`.
 - Each item has: `time_of_day` (for fixed), `interval_minutes` (for feeding), `recurrence` (daily by default, day-of-week mask for future use), `overdue_window_minutes`, `missed_threshold_minutes`, `is_compulsory` (medications only).
 - Feeding items additionally carry a `bolus_rest_minutes` field (configurable; typical values 20 or 25) that drives the countdown timer in the session runner.
@@ -118,6 +132,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 - Schedule CRUD is restricted to Admin and Senior Carer roles via RLS.
 
 **Session Runner**
+
 - Feeding sessions are guided flows, not simple checkboxes.
 - A `feeding_sessions` table records `started_at`, `completed_at`, `carer_id`, `care_recipient_id`, `notes`, and `bolus_rounds_completed` (integer).
 - The bolus/rest cycle is driven client-side with a countdown timer whose duration comes from `bolus_rest_minutes` on the schedule item. Carers may skip the rest period early.
@@ -126,11 +141,13 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 - Elapsed session time is shown in the UI but not separately persisted — it is derivable from `started_at` / `completed_at`.
 
 **Event Log**
+
 - An `event_log` table is append-only — no updates or deletes.
 - Every completion, skip, missed event, and as-needed medication record writes a row: `event_type`, `scheduled_item_id` (nullable for as-needed), `carer_id`, `occurred_at`, `status` (`completed`, `missed`, `skipped`), `notes`.
 - Missed events are written by a scheduled background job (Supabase Edge Function) that runs every minute and flags items past their missed threshold with no corresponding completion event.
 
 **Notification Service**
+
 - Expo Push Notifications used for mobile; web push for browser.
 - Device tokens stored in a `push_tokens` table, linked to `user_id`.
 - Notifications dispatched via a Supabase Edge Function triggered on a schedule (every minute).
@@ -138,16 +155,19 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 - In-app alerts are driven by a Supabase Realtime subscription on the `event_log` and `scheduled_items` tables.
 
 **Timeline View**
+
 - Client-side view, built from scheduled items + event log.
 - Rolling window defaults configurable per user (stored in user preferences).
 - Overdue items (past due, not completed, within missed threshold) float to the top.
 - Missed items shown in place with a "missed" badge.
 
 **As-Needed Recorder**
+
 - A dedicated screen allows carers to log any as-needed medication at the current time.
 - Records written directly to `event_log` with `event_type = as_needed_medication`.
 
 **Bulk Catch-Up**
+
 - Available from the timeline whenever one or more overdue events exist.
 - Scope: all scheduled events that are currently overdue (past their due time, not yet completed, and not yet past their missed threshold). Events already marked missed are excluded — they cannot be retroactively completed via bulk catch-up.
 - The carer confirms the action in a single bottom-sheet, optionally entering a shared note (e.g. "carer present, app not used").
@@ -156,6 +176,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 - The `bulk_confirmed` flag is a boolean column on both `event_log` and `feeding_sessions`; it is nullable/false for all individually recorded events.
 
 ### Architecture
+
 - **Mobile app**: React Native + Expo (TypeScript), targeting iPhone, iPad, and Android. The UI must be usable on all three form factors — iPad layout should make good use of the larger screen rather than simply scaling the phone layout.
 - **Web app**: Next.js 15 (App Router, TypeScript, Tailwind CSS) in a `web/` subdirectory. Designed for desktop browsers. Uses `@supabase/ssr` for cookie-based sessions and the PKCE flow for invite acceptance (rather than the implicit URL-fragment approach used natively). Both clients point at the same Supabase project.
 - **Backend**: Supabase (Postgres, Auth, Realtime, Edge Functions, Row-Level Security). No backend changes are required to support the web client — the same schema, RLS policies, and Edge Functions serve both platforms.
@@ -163,6 +184,7 @@ The admin (parent) configures a schedule of medications, feeding sessions, and a
 - **State Management** (mobile): React Query for server state, React Context for auth/duty state.
 
 ### Schema Overview
+
 - `care_recipients` — root tenant
 - `user_roles` — role per user per care recipient
 - `scheduled_items` — all recurring tasks; feeding items include `bolus_rest_minutes`
@@ -180,12 +202,14 @@ Good tests verify external behaviour, not implementation details. A test should 
 ### Modules to Test
 
 **Schedule Engine**
+
 - Verify that a scheduled item generates the correct due time given a base time and recurrence rule.
 - Verify overdue and missed threshold logic: an item is overdue after `overdue_window_minutes`, missed after `missed_threshold_minutes`, and neither if completed within the window.
 - Verify that supplement medications are flagged differently from compulsory ones in the overdue/missed logic.
 - Verify that a feeding schedule item exposes its `bolus_rest_minutes` value correctly to the session runner.
 
 **Session Runner**
+
 - Verify that a feeding session records correct `started_at` and `completed_at` on completion.
 - Verify that `bolus_rounds_completed` equals the number of rounds marked done before ending the session.
 - Verify that an abandoned session records `bolus_rounds_completed` as the partial count actually given, not zero.
@@ -194,12 +218,14 @@ Good tests verify external behaviour, not implementation details. A test should 
 - Verify that the countdown timer duration matches the `bolus_rest_minutes` configured on the schedule item.
 
 **Event Log**
+
 - Verify that completing a scheduled item writes exactly one event log entry with correct fields.
 - Verify that logging an as-needed medication writes an entry with `event_type = as_needed_medication`.
 - Verify that the log is immutable — no update or delete operations succeed.
 - Verify that event log entries are scoped to the correct care recipient and not visible to other tenants.
 
 **Bulk Catch-Up**
+
 - Verify that triggering a bulk catch-up writes exactly one event log entry per overdue scheduled event (excluding feeding sessions).
 - Verify that each bulk-confirmed entry has `occurred_at` equal to the scheduled time of the event, not the time the bulk action was performed.
 - Verify that each bulk-confirmed entry carries `bulk_confirmed = true` and is attributed to the carer who initiated the action.

@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Stack:** Expo 55 (React Native + TypeScript) · Supabase (Postgres + Auth + Realtime + Edge Functions) · React Query · Expo Router
 
 **Key constraints (non-negotiable):**
+
 - Online-only — no offline support
 - Invite-only onboarding — no self-registration
 - Supabase RLS is the primary multi-tenancy isolation mechanism — must be airtight

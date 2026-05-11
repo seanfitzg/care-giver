@@ -324,7 +324,10 @@ export default function ScheduleScreen() {
           {meds.length === 0 && <Text style={s.empty}>No medications scheduled.</Text>}
         </SectionBlock>
 
-        <SectionBlock title="Nutrition Schedule" onAdd={() => setItemForm(blankItemForm('nutrition'))}>
+        <SectionBlock
+          title="Nutrition Schedule"
+          onAdd={() => setItemForm(blankItemForm('nutrition'))}
+        >
           {nutritionItems.map((item) => (
             <ItemRow
               key={item.id}

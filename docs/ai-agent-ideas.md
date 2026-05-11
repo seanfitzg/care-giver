@@ -8,7 +8,7 @@ An agent is an AI that has **tools** it can call to gather information or take a
 
 ## Agents that fit this codebase
 
-### 1. Shift Handover Summary Agent *(best starter)*
+### 1. Shift Handover Summary Agent _(best starter)_
 
 **What it does:** When a carer checks out, the agent queries the DB for everything that happened during their shift, then writes a natural-language handover note.
 
@@ -18,7 +18,7 @@ An agent is an AI that has **tools** it can call to gather information or take a
 
 ---
 
-### 2. Anomaly Detection Agent *(intermediate)*
+### 2. Anomaly Detection Agent _(intermediate)_
 
 **What it does:** Runs on a schedule (e.g. every 30 mins), scans recent events for patterns that warrant attention — e.g. "no feeding session logged in 4 hours", "medication X has been noted 'partial dose' 3 days running".
 
@@ -26,15 +26,15 @@ An agent is an AI that has **tools** it can call to gather information or take a
 
 ---
 
-### 3. Care Report Agent *(practical for real use)*
+### 3. Care Report Agent _(practical for real use)_
 
-**What it does:** Admin asks in plain English — *"Give me a summary of last week for the GP appointment"* — and the agent figures out what data to pull, formats it appropriately, and returns a shareable report.
+**What it does:** Admin asks in plain English — _"Give me a summary of last week for the GP appointment"_ — and the agent figures out what data to pull, formats it appropriately, and returns a shareable report.
 
 **Why it's agentic:** It has to plan what queries to run before it knows what the report should contain.
 
 ---
 
-### 4. Natural Language Log Entry *(simplest to wire up)*
+### 4. Natural Language Log Entry _(simplest to wire up)_
 
 **What it does:** Carer types "gave 3 boluses, she seemed unsettled" and an agent parses it into structured fields — event type, bolus count, note text — before inserting into the DB.
 
@@ -45,6 +45,7 @@ An agent is an AI that has **tools** it can call to gather information or take a
 ## Where to start
 
 The **Shift Handover Summary** is the recommended first agent:
+
 - Clear trigger (check-out event)
 - Well-defined tools (DB queries)
 - Immediately useful output

@@ -101,7 +101,7 @@ export interface CarerInviteService {
   inviteCarer(
     email: string,
     role: Exclude<UserRole, 'admin'>,
-    careRecipientId: string
+    careRecipientId: string,
   ): Promise<void>;
 }
 ```
@@ -113,22 +113,27 @@ export interface CarerInviteService {
 Each class takes a `SupabaseClient` constructor argument and implements the corresponding interface. Key implementation notes:
 
 **`SupabaseAuthService`**
+
 - `toAppSession()` helper maps Supabase `Session` → `AppSession`
 - `onAuthStateChange` returns `() => subscription.unsubscribe()`
 - All error paths `throw new Error(error.message)` — callers get plain `Error`, not `AuthError`
 
 **`SupabaseUserRoleRepository`**
+
 - `getUserData` maps the existing query in `AuthContext.tsx:28-39` (currently `fetchUserData`)
 - `listCarersWithEmails` wraps the existing `supabase.rpc('get_carers_with_emails', ...)` call
 - `updateRole` / `revokeAccess` wrap the existing `.from('user_roles').update/delete()` calls
 
 **`SupabaseCareRecipientRepository`**
+
 - `createCareRecipient` wraps `supabase.rpc('create_care_recipient', { p_name, p_date_of_birth })`
 
 **`SupabaseCarerInviteService`**
+
 - `inviteCarer` wraps `supabase.functions.invoke('invite-carer', ...)` and internally fetches the session token — consumers no longer need to read `session.access_token`
 
 **`services/supabase/index.ts`**
+
 ```typescript
 export function createSupabaseServices(client: SupabaseClient): Services {
   return {
@@ -163,6 +168,7 @@ export function useServices(): Services {
 ## Files to Modify
 
 ### `app/_layout.tsx`
+
 - Import `supabase` from `@/lib/supabase`, `ServicesProvider`, and `createSupabaseServices`
 - Create services at module level (same pattern as `queryClient`): `const services = createSupabaseServices(supabase)`
 - Wrap the tree: `ServicesProvider` goes inside `QueryClientProvider`, outside `AuthProvider`
@@ -179,6 +185,7 @@ export default function RootLayout() {
 ```
 
 ### `contexts/AuthContext.tsx`
+
 - Remove `import { Session, User } from '@supabase/supabase-js'` and `import { supabase } from '@/lib/supabase'`
 - Remove module-level `fetchUserData` function
 - Import `AppSession`, `AppUser`, `UserRole`, `UserData` from `@/services/types`
@@ -190,19 +197,23 @@ export default function RootLayout() {
 - Change `session` state type to `AppSession | null`; derive `user` as `session ? { id: session.userId, email: session.userEmail } : null`
 
 ### `app/(auth)/login.tsx`
+
 - Remove `supabase` import; add `useServices()`
 - Replace `supabase.auth.signInWithPassword(...)` → `authService.signInWithPassword(email, password)`
 
 ### `app/(auth)/setup.tsx`
+
 - Remove `supabase` import; add `useServices()`
 - Replace `supabase.auth.setSession(...)` → `authService.setSessionFromTokens(accessToken, refreshToken)`
 - Replace `supabase.auth.updateUser({ password })` → `authService.updatePassword(password)`
 
 ### `app/(auth)/create-care-recipient.tsx`
+
 - Remove `supabase` import; add `useServices()`
 - Replace `supabase.rpc('create_care_recipient', ...)` → `careRecipientRepository.createCareRecipient(name, dob)`
 
 ### `app/admin/index.tsx`
+
 - Remove `supabase` import; add `useServices()`
 - Replace `fetchCarers` → `userRoleRepository.listCarersWithEmails(careRecipientId)`
 - Replace `inviteMutation` body → `carerInviteService.inviteCarer(email, role, careRecipientId!)`

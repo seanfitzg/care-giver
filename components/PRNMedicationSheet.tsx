@@ -81,9 +81,7 @@ export function PRNMedicationSheet({
                             <Text style={[styles.medName, isSelected && styles.medNameSelected]}>
                               {med.name}
                             </Text>
-                            {med.notes ? (
-                              <Text style={styles.medSubNotes}>{med.notes}</Text>
-                            ) : null}
+                            {med.notes ? <Text style={styles.medSubNotes}>{med.notes}</Text> : null}
                           </View>
                         </View>
                       </Pressable>
