@@ -125,7 +125,7 @@ function blankItemForm(type: ItemType): ItemForm {
     type,
     name: type === 'nutrition' ? 'Nutrition' : '',
     time_of_day: '',
-    interval_minutes: '180',
+    interval_minutes: '300',
     nutrition_type: 'bolus',
     bolus_rest_minutes: '20',
     overdue_window_minutes: '15',
