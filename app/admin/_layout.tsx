@@ -22,7 +22,6 @@ export default function AdminLayout() {
         name="index"
         options={{ title: 'Carer management', headerLeft: () => <BackButton /> }}
       />
-      <Stack.Screen name="schedule" options={{ title: 'Schedule' }} />
     </Stack>
   );
 }

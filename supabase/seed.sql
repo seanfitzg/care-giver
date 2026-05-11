@@ -125,12 +125,12 @@ INSERT INTO public.scheduled_items (
     '20:00', null, 30, 90, false, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
-  -- Nutrition (bolus, every 4 hours, 20 min bolus rest)
+  -- Nutrition (bolus, every 4 hours starting 08:00, 20 min bolus rest)
   (
     'bbbbbbbb-0000-0000-0000-000000000003',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'nutrition', 'PEG Feed',
-    null, 240, 30, 120, true, 20, 'bolus',
+    '08:00', 240, 30, 120, true, 20, 'bolus',
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Stander activity

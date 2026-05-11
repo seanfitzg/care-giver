@@ -11,7 +11,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Link } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -148,11 +147,6 @@ export default function AdminScreen() {
         <Pressable style={styles.inviteButton} onPress={() => setInviteModalOpen(true)}>
           <Text style={styles.inviteButtonText}>+ Invite carer</Text>
         </Pressable>
-        <Link href={'/admin/schedule' as never} asChild>
-          <Pressable style={styles.scheduleButton}>
-            <Text style={styles.scheduleButtonText}>Manage schedule</Text>
-          </Pressable>
-        </Link>
       </View>
       <FlatList
         data={carers}
@@ -279,15 +273,6 @@ const styles = StyleSheet.create({
   revokeButton: { borderColor: '#fca5a5' },
   revokeText: { color: '#dc2626' },
   headerActions: { gap: 10, padding: 16, paddingBottom: 0 },
-  scheduleButton: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  scheduleButtonText: { color: '#374151', fontWeight: '500', fontSize: 15 },
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 32 },
   modal: { flex: 1, padding: 24, paddingTop: 40 },
   modalTitle: { fontSize: 20, fontWeight: '600', color: '#111827', marginBottom: 24 },
