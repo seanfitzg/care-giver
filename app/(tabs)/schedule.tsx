@@ -195,9 +195,11 @@ export default function ScheduleScreen() {
       if (form.type === 'nutrition') {
         const interval = parseInt(form.interval_minutes, 10);
         if (!interval || interval < 1) throw new Error('Interval must be a positive number.');
+        const time = parseTime(form.time_of_day);
+        if (!time) throw new Error('Enter a valid start time (HH:MM).');
         payload.interval_minutes = interval;
         payload.nutrition_type = form.nutrition_type;
-        payload.time_of_day = form.time_of_day ? parseTime(form.time_of_day) : null;
+        payload.time_of_day = time;
         if (form.nutrition_type === 'bolus') {
           const restMins = parseInt(form.bolus_rest_minutes, 10);
           if (!restMins || restMins < 1) throw new Error('Rest period must be a positive number.');
@@ -464,7 +466,7 @@ function ScheduledItemModal({
               </Pressable>
             ))}
           </View>
-          <FieldLabel>First session at (optional)</FieldLabel>
+          <FieldLabel>First session at</FieldLabel>
           <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
           <FieldLabel>Interval between sessions</FieldLabel>
           <View style={s.hmsRow}>
