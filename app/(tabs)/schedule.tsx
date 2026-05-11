@@ -466,15 +466,39 @@ function ScheduledItemModal({
           </View>
           <FieldLabel>First session at (optional)</FieldLabel>
           <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
-          <FieldLabel>Interval between sessions (minutes)</FieldLabel>
-          <TextInput
-            style={s.input}
-            value={form.interval_minutes}
-            onChangeText={(v) => set({ interval_minutes: v })}
-            keyboardType="number-pad"
-            placeholder="e.g. 180"
-            placeholderTextColor="#9ca3af"
-          />
+          <FieldLabel>Interval between sessions</FieldLabel>
+          <View style={s.hmsRow}>
+            <View style={s.hmsField}>
+              <TextInput
+                style={s.input}
+                value={String(Math.floor(parseInt(form.interval_minutes || '0', 10) / 60))}
+                onChangeText={(v) => {
+                  const h = Math.max(0, parseInt(v || '0', 10) || 0);
+                  const m = parseInt(form.interval_minutes || '0', 10) % 60;
+                  set({ interval_minutes: String(h * 60 + m) });
+                }}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="#9ca3af"
+              />
+              <Text style={s.hmsLabel}>hrs</Text>
+            </View>
+            <View style={s.hmsField}>
+              <TextInput
+                style={s.input}
+                value={String(parseInt(form.interval_minutes || '0', 10) % 60)}
+                onChangeText={(v) => {
+                  const m = Math.min(59, Math.max(0, parseInt(v || '0', 10) || 0));
+                  const h = Math.floor(parseInt(form.interval_minutes || '0', 10) / 60);
+                  set({ interval_minutes: String(h * 60 + m) });
+                }}
+                keyboardType="number-pad"
+                placeholder="0"
+                placeholderTextColor="#9ca3af"
+              />
+              <Text style={s.hmsLabel}>min</Text>
+            </View>
+          </View>
           {form.nutrition_type === 'bolus' && (
             <>
               <FieldLabel>Default rest period between boluses (minutes)</FieldLabel>
@@ -697,6 +721,15 @@ const s = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
     backgroundColor: '#fff',
+  },
+  hmsRow: { flexDirection: 'row', gap: 12, marginBottom: 0 },
+  hmsField: { flex: 1 },
+  hmsLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginTop: -10,
+    marginBottom: 16,
   },
   segRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   seg: {
