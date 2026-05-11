@@ -5,14 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const TAB_TITLES: Record<string, string> = {
   index: 'Today',
-  nutrition: 'Nutrition',
+  schedule: 'Schedule',
   log: 'Log',
 };
 
 export default function TabLayout() {
   const { isAdmin, role, careRecipientName, signOut } = useAuth();
 
-  const settingsHref = isAdmin ? '/admin' : '/admin/schedule';
+  const settingsHref = '/admin';
   const settingsHeaderRight =
     isAdmin || role === 'senior_carer'
       ? () => (
@@ -61,11 +61,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="nutrition"
+        name="schedule"
         options={{
-          title: 'Nutrition',
+          title: 'Schedule',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="water-outline" size={size} color={color} />
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />
