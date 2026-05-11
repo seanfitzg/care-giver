@@ -326,8 +326,12 @@ export default function ScheduleScreen() {
           <Pressable onPress={() => {}} style={s.confirmSheet}>
             <Text style={s.confirmTitle}>Delete item</Text>
             <Text style={s.confirmBody}>Delete "{deleteTarget?.name}"? This cannot be undone.</Text>
-            {deleteItemMutation.error instanceof Error && (
-              <Text style={s.errorText}>{deleteItemMutation.error.message}</Text>
+            {deleteItemMutation.error != null && (
+              <Text style={s.errorText}>
+                {deleteItemMutation.error instanceof Error
+                  ? deleteItemMutation.error.message
+                  : 'Failed to delete item. Please try again.'}
+              </Text>
             )}
             <View style={s.confirmActions}>
               <Pressable style={s.cancelButton} onPress={() => setDeleteTarget(null)}>
@@ -370,7 +374,7 @@ function OccurrenceRow({
     occurrence.type === 'nutrition' && occurrence.nutrition_type
       ? NUTRITION_TYPE_LABELS[occurrence.nutrition_type]
       : null;
-  const showCompulsory = occurrence.is_compulsory && occurrence.type !== 'nutrition';
+  const showCompulsory = occurrence.is_compulsory && occurrence.type === 'medication_scheduled';
 
   return (
     <View style={s.row}>
@@ -633,12 +637,12 @@ const s = StyleSheet.create({
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeText: { fontSize: 11, fontWeight: '600' },
   compulsoryBadge: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: '#fee2e2',
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  compulsoryText: { fontSize: 11, fontWeight: '600', color: '#92400e' },
+  compulsoryText: { fontSize: 11, fontWeight: '600', color: '#dc2626' },
   rowActions: { flexDirection: 'row', gap: 6 },
   actionBtn: {
     paddingHorizontal: 8,
