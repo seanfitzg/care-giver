@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TimePicker } from '@/components/TimePicker';
 
 type ItemType = 'medication_scheduled' | 'nutrition' | 'activity';
+type NutritionType = 'bolus' | 'oral_self' | 'oral_carer';
 
 type ScheduledItem = {
   id: string;
@@ -28,7 +29,7 @@ type ScheduledItem = {
   missed_threshold_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
-  bolus_rounds: number | null;
+  nutrition_type: NutritionType | null;
   duration_minutes: number | null;
 };
 
@@ -44,8 +45,8 @@ type ItemForm = {
   name: string;
   time_of_day: string;
   interval_minutes: string;
-  bolus_rest_minutes: '20' | '25';
-  bolus_rounds: string;
+  nutrition_type: NutritionType;
+  bolus_rest_minutes: string;
   overdue_window_minutes: string;
   missed_threshold_minutes: string;
   is_compulsory: boolean;
@@ -86,8 +87,8 @@ function blankItemForm(type: ItemType): ItemForm {
     name: type === 'nutrition' ? 'Nutrition' : '',
     time_of_day: '',
     interval_minutes: '180',
+    nutrition_type: 'bolus',
     bolus_rest_minutes: '20',
-    bolus_rounds: '',
     overdue_window_minutes: '15',
     missed_threshold_minutes: '60',
     is_compulsory: true,
@@ -102,8 +103,8 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     name: item.name,
     time_of_day: fmtTime(item.time_of_day),
     interval_minutes: String(item.interval_minutes ?? 180),
-    bolus_rest_minutes: item.bolus_rest_minutes === 25 ? '25' : '20',
-    bolus_rounds: item.bolus_rounds != null ? String(item.bolus_rounds) : '',
+    nutrition_type: item.nutrition_type ?? 'bolus',
+    bolus_rest_minutes: item.bolus_rest_minutes != null ? String(item.bolus_rest_minutes) : '20',
     overdue_window_minutes: String(item.overdue_window_minutes),
     missed_threshold_minutes: String(item.missed_threshold_minutes),
     is_compulsory: item.is_compulsory,
@@ -116,6 +117,14 @@ const TYPE_LABELS: Record<ItemType, string> = {
   nutrition: 'Nutrition',
   activity: 'Activity',
 };
+
+const NUTRITION_TYPE_LABELS: Record<NutritionType, string> = {
+  bolus: 'Bolus',
+  oral_self: 'Oral (self)',
+  oral_carer: 'Oral (carer)',
+};
+
+const NUTRITION_TYPES: NutritionType[] = ['bolus', 'oral_self', 'oral_carer'];
 
 export default function ScheduleScreen() {
   const { careRecipientId, role } = useAuth();
@@ -134,7 +143,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,bolus_rounds,duration_minutes',
+          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -180,10 +189,15 @@ export default function ScheduleScreen() {
         const interval = parseInt(form.interval_minutes, 10);
         if (!interval || interval < 1) throw new Error('Interval must be a positive number.');
         payload.interval_minutes = interval;
-        payload.bolus_rest_minutes = parseInt(form.bolus_rest_minutes, 10);
+        payload.nutrition_type = form.nutrition_type;
         payload.time_of_day = form.time_of_day ? parseTime(form.time_of_day) : null;
-        const rounds = parseInt(form.bolus_rounds, 10);
-        payload.bolus_rounds = rounds > 0 ? rounds : null;
+        if (form.nutrition_type === 'bolus') {
+          const restMins = parseInt(form.bolus_rest_minutes, 10);
+          if (!restMins || restMins < 1) throw new Error('Rest period must be a positive number.');
+          payload.bolus_rest_minutes = restMins;
+        } else {
+          payload.bolus_rest_minutes = null;
+        }
       } else {
         const time = parseTime(form.time_of_day);
         if (!time) throw new Error('Enter a valid time (HH:MM).');
@@ -316,9 +330,11 @@ export default function ScheduleScreen() {
               key={item.id}
               label={item.name}
               sub={[
+                NUTRITION_TYPE_LABELS[item.nutrition_type ?? 'bolus'],
                 `Every ${fmtDuration(item.interval_minutes ?? 0)}`,
-                `${fmtDuration(item.bolus_rest_minutes ?? 0)} bolus rest`,
-                item.bolus_rounds != null ? `${item.bolus_rounds} bolus rounds` : null,
+                item.nutrition_type === 'bolus' && item.bolus_rest_minutes != null
+                  ? `${item.bolus_rest_minutes}min rest`
+                  : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -483,6 +499,20 @@ function ScheduledItemModal({
 
       {form.type === 'nutrition' && (
         <>
+          <FieldLabel>Feeding type</FieldLabel>
+          <View style={s.segRow}>
+            {NUTRITION_TYPES.map((v) => (
+              <Pressable
+                key={v}
+                style={[s.seg, form.nutrition_type === v && s.segSelected]}
+                onPress={() => set({ nutrition_type: v })}
+              >
+                <Text style={[s.segText, form.nutrition_type === v && s.segTextSelected]}>
+                  {NUTRITION_TYPE_LABELS[v]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
           <FieldLabel>First session at (optional)</FieldLabel>
           <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
           <FieldLabel>Interval between sessions (minutes)</FieldLabel>
@@ -494,29 +524,19 @@ function ScheduledItemModal({
             placeholder="e.g. 180"
             placeholderTextColor="#9ca3af"
           />
-          <FieldLabel>Bolus rest duration</FieldLabel>
-          <View style={s.segRow}>
-            {(['20', '25'] as const).map((v) => (
-              <Pressable
-                key={v}
-                style={[s.seg, form.bolus_rest_minutes === v && s.segSelected]}
-                onPress={() => set({ bolus_rest_minutes: v })}
-              >
-                <Text style={[s.segText, form.bolus_rest_minutes === v && s.segTextSelected]}>
-                  {v} min
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <FieldLabel>Target bolus rounds (optional)</FieldLabel>
-          <TextInput
-            style={s.input}
-            value={form.bolus_rounds}
-            onChangeText={(v) => set({ bolus_rounds: v })}
-            keyboardType="number-pad"
-            placeholder="e.g. 4 (leave blank if open-ended)"
-            placeholderTextColor="#9ca3af"
-          />
+          {form.nutrition_type === 'bolus' && (
+            <>
+              <FieldLabel>Default rest period between boluses (minutes)</FieldLabel>
+              <TextInput
+                style={s.input}
+                value={form.bolus_rest_minutes}
+                onChangeText={(v) => set({ bolus_rest_minutes: v })}
+                keyboardType="number-pad"
+                placeholder="e.g. 20"
+                placeholderTextColor="#9ca3af"
+              />
+            </>
+          )}
         </>
       )}
 

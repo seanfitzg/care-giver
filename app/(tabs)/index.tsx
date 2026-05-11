@@ -156,8 +156,8 @@ export default function TodayScreen() {
         params: {
           scheduledItemId: item.scheduledItemId,
           name: item.name,
+          nutritionType: item.nutritionType ?? 'bolus',
           bolusRestMinutes: String(item.bolusRestMinutes ?? 20),
-          bolusRounds: String(item.bolusRounds ?? 0),
         },
       } as never);
     } else {

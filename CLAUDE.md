@@ -56,3 +56,24 @@ npx supabase db diff     # generate migration from schema diff
 - All new Supabase tables must have RLS enabled with explicit policies — never rely on the default-deny being enough; add positive grants too
 - Append-only event log — never update or delete event records
 - Always format any .js or .tsx files with the prettier formatter.
+
+## Documentation Workflow
+
+When asked for recommendations, research, ideas, or design discussions, save the output to a markdown file in `/docs/` by default rather than responding inline. Confirm the filename with the user only if ambiguous.
+
+## Supabase CLI Conventions
+
+- Use `npx supabase db query` (not the deprecated `db execute`).
+- Always include `--linked` flag for remote operations (seed, push, query).
+- Run `npx supabase db push` BEFORE seeding when new migrations exist.
+- For edge function tests, invoke Deno directly — the `supabase functions test` subcommand has been removed.
+
+## Implementation Workflow
+
+When the user says 'implement issue #N', start implementing immediately after a brief plan — do not first verify whether the issue is already done or run extensive exploration. Trust the user's request.
+
+## Platform Conventions
+
+- This is a Windows machine; default to PowerShell syntax (`$env:VAR="value"`), not bash `export`.
+- For Expo Web, avoid `Alert.alert` for confirmations — it is silently swallowed. Use a Modal-based confirmation instead.
+- For Android dev builds, never use `127.0.0.1` or `localhost` in `.env` — use the host machine's LAN IP.

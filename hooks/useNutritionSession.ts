@@ -1,12 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import type { FetchedTimeline } from './useTimeline';
 
 type StartSessionVars = {
   careRecipientId: string;
   scheduledItemId: string;
   carerId: string;
   startedAt: string;
+  bolusRestMinutes?: number;
 };
 
 type EndSessionVars = {
@@ -14,7 +14,7 @@ type EndSessionVars = {
   careRecipientId: string;
   scheduledItemId: string;
   carerId: string;
-  bolusRoundsCompleted: number;
+  allConsumed: boolean;
   notes?: string;
   completedAt: string;
 };
@@ -22,7 +22,6 @@ type EndSessionVars = {
 type AbandonSessionVars = {
   sessionId: string;
   careRecipientId: string;
-  bolusRoundsCompleted: number;
   notes?: string;
 };
 
@@ -37,6 +36,7 @@ export function useStartNutritionSession() {
           carer_id: vars.carerId,
           started_at: vars.startedAt,
           bulk_confirmed: false,
+          bolus_rest_minutes: vars.bolusRestMinutes ?? null,
         })
         .select('id')
         .single();
@@ -56,7 +56,7 @@ export function useEndNutritionSession() {
           .from('nutrition_sessions')
           .update({
             completed_at: vars.completedAt,
-            bolus_rounds_completed: vars.bolusRoundsCompleted,
+            all_consumed: vars.allConsumed,
             notes: vars.notes || null,
           })
           .eq('id', vars.sessionId),
@@ -72,33 +72,6 @@ export function useEndNutritionSession() {
       if (sessionResult.error) throw sessionResult.error;
       if (logResult.error) throw logResult.error;
     },
-    onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: ['timeline', vars.careRecipientId] });
-      const previous = qc.getQueryData<FetchedTimeline>(['timeline', vars.careRecipientId]);
-      qc.setQueryData<FetchedTimeline>(['timeline', vars.careRecipientId], (old) => {
-        if (!old) return old;
-        return {
-          ...old,
-          todayEvents: [
-            ...old.todayEvents,
-            {
-              id: `optimistic-${Date.now()}`,
-              scheduled_item_id: vars.scheduledItemId,
-              occurred_at: vars.completedAt,
-              status: 'completed' as const,
-              carer_id: vars.carerId,
-            },
-          ],
-        };
-      });
-      return { previous };
-    },
-    onError: (_err, vars, ctx) => {
-      const { previous } = (ctx ?? {}) as { previous?: FetchedTimeline };
-      if (previous !== undefined) {
-        qc.setQueryData(['timeline', vars.careRecipientId], previous);
-      }
-    },
     onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: ['timeline', vars.careRecipientId] });
     },
@@ -112,10 +85,7 @@ export function useAbandonNutritionSession() {
     mutationFn: async (vars: AbandonSessionVars) => {
       const { error } = await supabase
         .from('nutrition_sessions')
-        .update({
-          bolus_rounds_completed: vars.bolusRoundsCompleted,
-          notes: vars.notes || null,
-        })
+        .update({ notes: vars.notes || null })
         .eq('id', vars.sessionId);
       if (error) throw error;
     },
