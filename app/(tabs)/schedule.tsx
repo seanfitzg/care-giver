@@ -25,7 +25,6 @@ type ScheduledItem = {
   time_of_day: string | null;
   interval_minutes: number | null;
   overdue_window_minutes: number;
-  missed_threshold_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
   nutrition_type: NutritionType | null;
@@ -46,7 +45,6 @@ type ItemForm = {
   nutrition_type: NutritionType;
   bolus_rest_minutes: string;
   overdue_window_minutes: string;
-  missed_threshold_minutes: string;
   is_compulsory: boolean;
   duration_minutes: string;
 };
@@ -128,8 +126,7 @@ function blankItemForm(type: ItemType): ItemForm {
     interval_minutes: '300',
     nutrition_type: 'bolus',
     bolus_rest_minutes: '20',
-    overdue_window_minutes: '15',
-    missed_threshold_minutes: '60',
+    overdue_window_minutes: '60',
     is_compulsory: true,
     duration_minutes: '30',
   };
@@ -145,7 +142,6 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     nutrition_type: item.nutrition_type ?? 'bolus',
     bolus_rest_minutes: item.bolus_rest_minutes != null ? String(item.bolus_rest_minutes) : '20',
     overdue_window_minutes: String(item.overdue_window_minutes),
-    missed_threshold_minutes: String(item.missed_threshold_minutes),
     is_compulsory: item.is_compulsory,
     duration_minutes: String(item.duration_minutes ?? 30),
   };
@@ -165,7 +161,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,missed_threshold_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
+          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -179,16 +175,13 @@ export default function ScheduleScreen() {
     mutationFn: async (form: ItemForm) => {
       if (!form.name.trim()) throw new Error('Name is required.');
       const overdue = parseInt(form.overdue_window_minutes, 10);
-      const missed = parseInt(form.missed_threshold_minutes, 10);
       if (!overdue || overdue < 1) throw new Error('Overdue window must be a positive number.');
-      if (!missed || missed < 1) throw new Error('Missed threshold must be a positive number.');
 
       const payload: Record<string, unknown> = {
         care_recipient_id: careRecipientId,
         type: form.type,
         name: form.name.trim(),
         overdue_window_minutes: overdue,
-        missed_threshold_minutes: missed,
         is_compulsory: form.is_compulsory,
       };
 
@@ -554,21 +547,11 @@ function ScheduledItemModal({
         </>
       )}
 
-      <FieldLabel>Overdue window (minutes)</FieldLabel>
+      <FieldLabel>Mark missed after (minutes)</FieldLabel>
       <TextInput
         style={s.input}
         value={form.overdue_window_minutes}
         onChangeText={(v) => set({ overdue_window_minutes: v })}
-        keyboardType="number-pad"
-        placeholder="e.g. 15"
-        placeholderTextColor="#9ca3af"
-      />
-
-      <FieldLabel>Missed threshold (minutes)</FieldLabel>
-      <TextInput
-        style={s.input}
-        value={form.missed_threshold_minutes}
-        onChangeText={(v) => set({ missed_threshold_minutes: v })}
         keyboardType="number-pad"
         placeholder="e.g. 60"
         placeholderTextColor="#9ca3af"

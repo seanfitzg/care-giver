@@ -105,7 +105,7 @@ ON CONFLICT (user_id, care_recipient_id) DO NOTHING;
 INSERT INTO public.scheduled_items (
   id, care_recipient_id, type, name,
   time_of_day, interval_minutes,
-  overdue_window_minutes, missed_threshold_minutes,
+  overdue_window_minutes,
   is_compulsory, bolus_rest_minutes, nutrition_type,
   created_by
 ) VALUES
@@ -114,7 +114,7 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000001',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'medication_scheduled', 'Morning Meds',
-    '08:00', null, 15, 60, true, null, null,
+    '08:00', null, 60, true, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Evening medication (supplement)
@@ -122,7 +122,7 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000002',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'medication_scheduled', 'Evening Supplement',
-    '20:00', null, 30, 90, false, null, null,
+    '20:00', null, 90, false, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Nutrition (bolus, every 4 hours starting 08:00, 20 min bolus rest)
@@ -130,7 +130,7 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000003',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'nutrition', 'PEG Feed',
-    '08:00', 240, 30, 120, true, 20, 'bolus',
+    '08:00', 240, 120, true, 20, 'bolus',
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Stander activity
@@ -138,15 +138,15 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000004',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'activity', 'Stander Time',
-    '10:00', null, 30, 120, true, null, null,
+    '10:00', null, 120, true, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
-  -- Physio exercises — wide missed_threshold so it stays overdue most of the day
+  -- Physio exercises — wide overdue window so it stays overdue most of the day
   (
     'bbbbbbbb-0000-0000-0000-000000000005',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'activity', 'Physio Exercises',
-    '07:00', null, 10, 960, true, null, null,
+    '07:00', null, 960, true, null, null,
     '00000000-0000-0000-0000-000000000001'
   )
 ON CONFLICT (id) DO UPDATE SET
@@ -155,7 +155,6 @@ ON CONFLICT (id) DO UPDATE SET
   time_of_day = EXCLUDED.time_of_day,
   interval_minutes = EXCLUDED.interval_minutes,
   overdue_window_minutes = EXCLUDED.overdue_window_minutes,
-  missed_threshold_minutes = EXCLUDED.missed_threshold_minutes,
   is_compulsory = EXCLUDED.is_compulsory,
   bolus_rest_minutes = EXCLUDED.bolus_rest_minutes,
   nutrition_type = EXCLUDED.nutrition_type;

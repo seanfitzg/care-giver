@@ -26,7 +26,6 @@ type ScheduledItemRow = {
   time_of_day: string | null;
   interval_minutes: number | null;
   overdue_window_minutes: number;
-  missed_threshold_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
   nutrition_type: NutritionType | null;
@@ -65,10 +64,11 @@ function scheduledTimeToday(timeOfDay: string): Date {
   return new Date(start.getTime() + (h * 60 + m) * 60_000);
 }
 
-function generateNutritionTimes(intervalMinutes: number): Date[] {
+function generateNutritionTimes(timeOfDay: string, intervalMinutes: number): Date[] {
   const { start, end } = todayBounds();
+  const [h, m] = timeOfDay.split(':').map(Number);
   const times: Date[] = [];
-  let t = start.getTime();
+  let t = start.getTime() + (h * 60 + m) * 60_000;
   while (t <= end.getTime()) {
     times.push(new Date(t));
     t += intervalMinutes * 60_000;
@@ -80,16 +80,16 @@ function computeStatus(
   scheduledAt: Date,
   scheduledItemId: string,
   overdueWindow: number,
-  missedThreshold: number,
   todayEvents: EventLogRow[],
   now: Date,
   earliestMs: number,
 ): ItemStatus {
   const scheduledMs = scheduledAt.getTime();
+  const windowEndMs = scheduledMs + overdueWindow * 60_000;
   const match = todayEvents.find((e) => {
     if (e.scheduled_item_id !== scheduledItemId) return false;
     const eMs = new Date(e.occurred_at).getTime();
-    return eMs >= earliestMs && eMs <= scheduledMs + missedThreshold * 60_000;
+    return eMs >= earliestMs && eMs <= windowEndMs;
   });
 
   if (match) {
@@ -99,8 +99,8 @@ function computeStatus(
   }
 
   const nowMs = now.getTime();
-  if (nowMs > scheduledMs + missedThreshold * 60_000) return 'missed';
-  if (nowMs > scheduledMs + overdueWindow * 60_000) return 'overdue';
+  if (nowMs > windowEndMs) return 'missed';
+  if (nowMs >= scheduledMs) return 'overdue';
   return 'upcoming';
 }
 
@@ -120,8 +120,8 @@ export function buildTimelineItems(
 
   for (const row of scheduledItems) {
     const times: Date[] =
-      row.type === 'nutrition' && row.interval_minutes
-        ? generateNutritionTimes(row.interval_minutes)
+      row.type === 'nutrition' && row.interval_minutes && row.time_of_day
+        ? generateNutritionTimes(row.time_of_day, row.interval_minutes)
         : row.time_of_day
           ? [scheduledTimeToday(row.time_of_day)]
           : [];
@@ -132,13 +132,12 @@ export function buildTimelineItems(
       // for subsequent occurrences use the previous occurrence's missed-threshold boundary
       // to avoid double-attributing one event to two slots.
       const earliestMs =
-        i === 0 ? dayStartMs : times[i - 1].getTime() + row.missed_threshold_minutes * 60_000;
+        i === 0 ? dayStartMs : times[i - 1].getTime() + row.overdue_window_minutes * 60_000;
 
       const status = computeStatus(
         scheduledAt,
         row.id,
         row.overdue_window_minutes,
-        row.missed_threshold_minutes,
         todayEvents,
         now,
         earliestMs,
@@ -158,7 +157,7 @@ export function buildTimelineItems(
             e.carer_id != null &&
             new Date(e.occurred_at).getTime() >= earliestMs &&
             new Date(e.occurred_at).getTime() <=
-              scheduledAt.getTime() + row.missed_threshold_minutes * 60_000,
+              scheduledAt.getTime() + row.overdue_window_minutes * 60_000,
         );
         if (completionEvent?.carer_id) {
           completedByName = carerNames[completionEvent.carer_id];
@@ -193,7 +192,7 @@ async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
     supabase
       .from('scheduled_items')
       .select(
-        'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, missed_threshold_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
+        'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
       )
       .eq('care_recipient_id', careRecipientId),
     supabase

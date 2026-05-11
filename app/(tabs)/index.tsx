@@ -15,6 +15,7 @@ import { ActivityConfirmSheet } from '@/components/ActivityConfirmSheet';
 import { MedicationConfirmSheet } from '@/components/MedicationConfirmSheet';
 import { PRNMedicationSheet } from '@/components/PRNMedicationSheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMarkNutritionDone } from '@/hooks/useMarkNutritionDone';
 import { useRecordActivity } from '@/hooks/useRecordActivity';
 import { useRecordMedication } from '@/hooks/useRecordMedication';
 import { useSkipActivity } from '@/hooks/useSkipActivity';
@@ -68,15 +69,18 @@ function TaskCard({
   variant = 'default',
   onRecord,
   onSkip,
+  onQuickDone,
 }: {
   item: TimelineItem;
   variant?: 'default' | 'overdue';
   onRecord?: (item: TimelineItem) => void;
   onSkip?: (item: TimelineItem) => void;
+  onQuickDone?: (item: TimelineItem) => void;
 }) {
   const isDone = item.status === 'done';
   const canRecord = (item.status === 'overdue' || item.status === 'upcoming') && !!onRecord;
   const canSkip = item.status === 'overdue' && item.type === 'activity' && !!onSkip;
+  const canQuickDone = item.status === 'overdue' && item.type === 'nutrition' && !!onQuickDone;
 
   const cardStyle = [
     styles.card,
@@ -100,6 +104,28 @@ function TaskCard({
       </View>
     </>
   );
+
+  if (canQuickDone) {
+    return (
+      <View style={cardStyle}>
+        {bodyContent}
+        <View style={styles.cardActions}>
+          <Pressable
+            style={[styles.recordBtn, { backgroundColor: TYPE_CONFIG[item.type].bg }]}
+            onPress={() => onRecord!(item)}
+          >
+            <Ionicons name="play-circle-outline" size={18} color={TYPE_CONFIG[item.type].color} />
+            <Text style={[styles.recordBtnText, { color: TYPE_CONFIG[item.type].color }]}>
+              Start
+            </Text>
+          </Pressable>
+          <Pressable style={styles.skipBtn} onPress={() => onQuickDone(item)}>
+            <Text style={styles.skipBtnText}>This is done</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (canSkip) {
     return (
@@ -176,6 +202,7 @@ export default function TodayScreen() {
   const { mutate: recordMedication, isPending: isMedPending } = useRecordMedication();
   const { mutate: recordActivity, isPending: isActivityPending } = useRecordActivity();
   const { mutate: skipActivity } = useSkipActivity();
+  const { mutate: markNutritionDone } = useMarkNutritionDone();
   const { mutate: recordPRN, isPending: isPRNPending } = useRecordPRNMedication();
   const { data: prnMedications = [], isLoading: isPRNLoading } = usePRNMedications(careRecipientId);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
@@ -222,6 +249,14 @@ export default function TodayScreen() {
         onError: () => Alert.alert('Error', 'Failed to record medication. Please try again.'),
       });
     }
+  }
+
+  function handleQuickDoneNutrition(item: TimelineItem) {
+    if (!careRecipientId || !user) return;
+    markNutritionDone(
+      { careRecipientId, scheduledItemId: item.scheduledItemId, carerId: user.id },
+      { onError: () => Alert.alert('Error', 'Failed to record nutrition. Please try again.') },
+    );
   }
 
   function handleSkip(item: TimelineItem) {
@@ -287,6 +322,7 @@ export default function TodayScreen() {
                 variant="overdue"
                 onRecord={handleItemTap}
                 onSkip={handleSkip}
+                onQuickDone={handleQuickDoneNutrition}
               />
             ))}
           </View>
