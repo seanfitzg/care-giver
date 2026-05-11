@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 
 export type ItemType = 'medication_scheduled' | 'nutrition' | 'activity';
-export type ItemStatus = 'overdue' | 'done' | 'missed' | 'upcoming';
+export type ItemStatus = 'overdue' | 'done' | 'missed' | 'skipped' | 'upcoming';
 export type NutritionType = 'bolus' | 'oral_self' | 'oral_carer';
 
 export type TimelineItem = {
@@ -92,7 +92,11 @@ function computeStatus(
     return eMs >= earliestMs && eMs <= scheduledMs + missedThreshold * 60_000;
   });
 
-  if (match) return match.status === 'completed' ? 'done' : 'missed';
+  if (match) {
+    if (match.status === 'completed') return 'done';
+    if (match.status === 'skipped') return 'skipped';
+    return 'missed';
+  }
 
   const nowMs = now.getTime();
   if (nowMs > scheduledMs + missedThreshold * 60_000) return 'missed';

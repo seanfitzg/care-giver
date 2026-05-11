@@ -17,6 +17,7 @@ import { PRNMedicationSheet } from '@/components/PRNMedicationSheet';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRecordActivity } from '@/hooks/useRecordActivity';
 import { useRecordMedication } from '@/hooks/useRecordMedication';
+import { useSkipActivity } from '@/hooks/useSkipActivity';
 import { useRecordPRNMedication } from '@/hooks/useRecordPRNMedication';
 import { usePRNMedications } from '@/hooks/usePRNMedications';
 import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
@@ -35,6 +36,7 @@ const STATUS_CONFIG: Record<ItemStatus, { label: string; color: string; bg: stri
   overdue: { label: 'Overdue', color: '#dc2626', bg: '#fef2f2' },
   done: { label: 'Done', color: '#16a34a', bg: '#f0fdf4' },
   missed: { label: 'Missed', color: '#7c3aed', bg: '#f5f3ff' },
+  skipped: { label: 'Skipped', color: '#6b7280', bg: '#f3f4f6' },
   upcoming: { label: 'Upcoming', color: '#6b7280', bg: '#f9fafb' },
 };
 
@@ -65,15 +67,24 @@ function TaskCard({
   item,
   variant = 'default',
   onRecord,
+  onSkip,
 }: {
   item: TimelineItem;
   variant?: 'default' | 'overdue';
   onRecord?: (item: TimelineItem) => void;
+  onSkip?: (item: TimelineItem) => void;
 }) {
   const isDone = item.status === 'done';
   const canRecord = (item.status === 'overdue' || item.status === 'upcoming') && !!onRecord;
+  const canSkip = item.status === 'overdue' && item.type === 'activity' && !!onSkip;
 
-  const cardContent = (
+  const cardStyle = [
+    styles.card,
+    variant === 'overdue' && styles.cardOverdue,
+    isDone && styles.cardDone,
+  ];
+
+  const bodyContent = (
     <>
       <TypeIcon type={item.type} />
       <View style={styles.cardBody}>
@@ -87,6 +98,38 @@ function TaskCard({
           </Text>
         )}
       </View>
+    </>
+  );
+
+  if (canSkip) {
+    return (
+      <View style={cardStyle}>
+        {bodyContent}
+        <View style={styles.cardActions}>
+          <Pressable
+            style={[styles.recordBtn, { backgroundColor: TYPE_CONFIG[item.type].bg }]}
+            onPress={() => onRecord!(item)}
+          >
+            <Ionicons
+              name="checkmark-circle-outline"
+              size={18}
+              color={TYPE_CONFIG[item.type].color}
+            />
+            <Text style={[styles.recordBtnText, { color: TYPE_CONFIG[item.type].color }]}>
+              Record
+            </Text>
+          </Pressable>
+          <Pressable style={styles.skipBtn} onPress={() => onSkip(item)}>
+            <Text style={styles.skipBtnText}>Skip for Today</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
+
+  const cardContent = (
+    <>
+      {bodyContent}
       {canRecord ? (
         <View style={[styles.recordBtn, { backgroundColor: TYPE_CONFIG[item.type].bg }]}>
           <Ionicons
@@ -103,12 +146,6 @@ function TaskCard({
       )}
     </>
   );
-
-  const cardStyle = [
-    styles.card,
-    variant === 'overdue' && styles.cardOverdue,
-    isDone && styles.cardDone,
-  ];
 
   if (canRecord) {
     return (
@@ -138,13 +175,16 @@ export default function TodayScreen() {
   const { items, isLoading, refetch } = useTimeline(careRecipientId);
   const { mutate: recordMedication, isPending: isMedPending } = useRecordMedication();
   const { mutate: recordActivity, isPending: isActivityPending } = useRecordActivity();
+  const { mutate: skipActivity } = useSkipActivity();
   const { mutate: recordPRN, isPending: isPRNPending } = useRecordPRNMedication();
   const { data: prnMedications = [], isLoading: isPRNLoading } = usePRNMedications(careRecipientId);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
   const [prnSheetVisible, setPRNSheetVisible] = useState(false);
 
   const overdue = items.filter((i) => i.status === 'overdue');
-  const earlierToday = items.filter((i) => i.status === 'done' || i.status === 'missed');
+  const earlierToday = items.filter(
+    (i) => i.status === 'done' || i.status === 'missed' || i.status === 'skipped',
+  );
   const upcoming = items.filter((i) => i.status === 'upcoming');
 
   function handleItemTap(item: TimelineItem) {
@@ -182,6 +222,14 @@ export default function TodayScreen() {
         onError: () => Alert.alert('Error', 'Failed to record medication. Please try again.'),
       });
     }
+  }
+
+  function handleSkip(item: TimelineItem) {
+    if (!careRecipientId || !user) return;
+    skipActivity(
+      { careRecipientId, scheduledItemId: item.scheduledItemId, carerId: user.id },
+      { onError: () => Alert.alert('Error', 'Failed to skip activity. Please try again.') },
+    );
   }
 
   function handleRecordPRN(medicationId: string, notes: string) {
@@ -233,7 +281,13 @@ export default function TodayScreen() {
               {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
             </Text>
             {overdue.map((item) => (
-              <TaskCard key={item.key} item={item} variant="overdue" onRecord={handleItemTap} />
+              <TaskCard
+                key={item.key}
+                item={item}
+                variant="overdue"
+                onRecord={handleItemTap}
+                onSkip={handleSkip}
+              />
             ))}
           </View>
         )}
@@ -248,7 +302,11 @@ export default function TodayScreen() {
                   <View
                     style={[
                       styles.spineDot,
-                      item.status === 'done' ? styles.spineDotDone : styles.spineDotMissed,
+                      item.status === 'done'
+                        ? styles.spineDotDone
+                        : item.status === 'skipped'
+                          ? styles.spineDotSkipped
+                          : styles.spineDotMissed,
                     ]}
                   />
                   {idx < earlierToday.length - 1 && <View style={styles.spineLine} />}
@@ -338,6 +396,7 @@ const styles = StyleSheet.create({
   spineDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   spineDotDone: { backgroundColor: '#16a34a' },
   spineDotMissed: { backgroundColor: '#7c3aed' },
+  spineDotSkipped: { backgroundColor: '#9ca3af' },
   spineDotUpcoming: { backgroundColor: '#d1d5db', borderWidth: 2, borderColor: '#d1d5db' },
   spineLine: { width: 1, flex: 1, backgroundColor: '#e5e7eb', marginTop: 2 },
   cardWrapper: { flex: 1, marginBottom: 8 },
@@ -393,6 +452,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#eff6ff',
   },
   recordBtnText: { fontSize: 12, fontWeight: '600', color: '#2563eb' },
+
+  cardActions: { alignItems: 'flex-end', gap: 6 },
+  skipBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  skipBtnText: { fontSize: 12, fontWeight: '500', color: '#6b7280' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
 
