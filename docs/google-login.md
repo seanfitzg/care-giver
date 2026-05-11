@@ -13,6 +13,7 @@ Google login would allow invited carers to sign in with their Google account ins
 ### 1. Google OAuth App (one-time setup, outside the codebase)
 
 Create a Google Cloud project and OAuth 2.0 credentials:
+
 - Go to [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials
 - Create an **OAuth 2.0 Client ID** (type: Web application)
 - Add authorized redirect URIs:
@@ -37,6 +38,7 @@ redirect_uri = ""  # leave blank; Supabase uses its own callback URL
 ```
 
 Add to `.env` (and `.env.example`):
+
 ```
 AUTH_EXTERNAL_GOOGLE_CLIENT_ID=<your-client-id>
 AUTH_EXTERNAL_GOOGLE_SECRET=<your-client-secret>
@@ -63,6 +65,7 @@ The `caregiver` deep link scheme is already configured in `app.json`, so no chan
 ### 4. Deep link callback handling
 
 The OAuth flow redirects back to the app via a deep link like:
+
 ```
 caregiver://auth/callback#access_token=...&refresh_token=...
 ```
@@ -130,16 +133,17 @@ The `invite-carer` Edge Function creates users via `adminClient.auth.admin.invit
 
 ## Files to modify
 
-| File | Change |
-|---|---|
-| `supabase/config.toml` | Enable `[auth.external.google]` block |
-| `.env` / `.env.example` | Add `AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `AUTH_EXTERNAL_GOOGLE_SECRET` |
-| `package.json` | Add `expo-auth-session`, `expo-web-browser`, `expo-crypto` |
-| `app/(auth)/login.tsx` | Add Google sign-in button and handler |
-| `app/_layout.tsx` | Add "not invited" redirect branch in AuthGate |
-| `app/(auth)/not-invited.tsx` | New screen for uninvited Google users |
+| File                         | Change                                                                 |
+| ---------------------------- | ---------------------------------------------------------------------- |
+| `supabase/config.toml`       | Enable `[auth.external.google]` block                                  |
+| `.env` / `.env.example`      | Add `AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and `AUTH_EXTERNAL_GOOGLE_SECRET` |
+| `package.json`               | Add `expo-auth-session`, `expo-web-browser`, `expo-crypto`             |
+| `app/(auth)/login.tsx`       | Add Google sign-in button and handler                                  |
+| `app/_layout.tsx`            | Add "not invited" redirect branch in AuthGate                          |
+| `app/(auth)/not-invited.tsx` | New screen for uninvited Google users                                  |
 
 No changes needed to:
+
 - `contexts/AuthContext.tsx` — `loadUserData()` and `onAuthStateChange` handle Google sessions identically to email sessions
 - `supabase/migrations/` — `user_roles` already ties identity to access; no schema changes needed
 - `supabase/functions/invite-carer/` — invite still creates the user record by email

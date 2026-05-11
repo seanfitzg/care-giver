@@ -10,13 +10,13 @@ During local development, point at **LM Studio** (`http://<LAN-IP>:1234/v1`). Al
 
 ## Provider options
 
-| Provider | Free Tier | Notes |
-|---|---|---|
-| **Cerebras** | Yes | Fast inference, Llama 3 models |
-| **OpenRouter** | Some models free | Aggregator — one API key, many models; easy to swap models without code changes |
-| **Cloudflare Workers AI** | Yes (Workers free plan) | Good if moving infra toward Cloudflare |
-| **Hugging Face Serverless** | Yes (smaller models) | Wide model selection |
-| **Together AI** | $1 credit then pay-per-token | Good range of open source models, competitive pricing |
+| Provider                    | Free Tier                    | Notes                                                                           |
+| --------------------------- | ---------------------------- | ------------------------------------------------------------------------------- |
+| **Cerebras**                | Yes                          | Fast inference, Llama 3 models                                                  |
+| **OpenRouter**              | Some models free             | Aggregator — one API key, many models; easy to swap models without code changes |
+| **Cloudflare Workers AI**   | Yes (Workers free plan)      | Good if moving infra toward Cloudflare                                          |
+| **Hugging Face Serverless** | Yes (smaller models)         | Wide model selection                                                            |
+| **Together AI**             | $1 credit then pay-per-token | Good range of open source models, competitive pricing                           |
 
 > **Note:** Groq is excluded from consideration.
 

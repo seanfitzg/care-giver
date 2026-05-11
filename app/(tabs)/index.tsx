@@ -71,9 +71,7 @@ function TaskCard({
   onRecord?: (item: TimelineItem) => void;
 }) {
   const isDone = item.status === 'done';
-  const canRecord =
-    (item.status === 'overdue' || item.status === 'upcoming') &&
-    !!onRecord;
+  const canRecord = (item.status === 'overdue' || item.status === 'upcoming') && !!onRecord;
 
   const cardContent = (
     <>
