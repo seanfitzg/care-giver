@@ -24,7 +24,6 @@ type ScheduledItemRow = {
   type: ItemType;
   name: string;
   time_of_day: string | null;
-  interval_minutes: number | null;
   overdue_window_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
@@ -62,18 +61,6 @@ function scheduledTimeToday(timeOfDay: string): Date {
   const { start } = todayBounds();
   const [h, m] = timeOfDay.split(':').map(Number);
   return new Date(start.getTime() + (h * 60 + m) * 60_000);
-}
-
-function generateNutritionTimes(timeOfDay: string, intervalMinutes: number): Date[] {
-  const { start, end } = todayBounds();
-  const [h, m] = timeOfDay.split(':').map(Number);
-  const times: Date[] = [];
-  let t = start.getTime() + (h * 60 + m) * 60_000;
-  while (t <= end.getTime()) {
-    times.push(new Date(t));
-    t += intervalMinutes * 60_000;
-  }
-  return times;
 }
 
 function computeStatus(
@@ -119,64 +106,50 @@ export function buildTimelineItems(
   const dayStartMs = todayBounds().start.getTime();
 
   for (const row of scheduledItems) {
-    const times: Date[] =
-      row.type === 'nutrition' && row.interval_minutes && row.time_of_day
-        ? generateNutritionTimes(row.time_of_day, row.interval_minutes)
-        : row.time_of_day
-          ? [scheduledTimeToday(row.time_of_day)]
-          : [];
+    if (!row.time_of_day) continue;
+    const scheduledAt = scheduledTimeToday(row.time_of_day);
+    const windowEndMs = scheduledAt.getTime() + row.overdue_window_minutes * 60_000;
 
-    for (let i = 0; i < times.length; i++) {
-      const scheduledAt = times[i];
-      // For the first occurrence use start-of-day so early recordings are captured;
-      // for subsequent occurrences use the previous occurrence's missed-threshold boundary
-      // to avoid double-attributing one event to two slots.
-      const earliestMs =
-        i === 0 ? dayStartMs : times[i - 1].getTime() + row.overdue_window_minutes * 60_000;
+    const status = computeStatus(
+      scheduledAt,
+      row.id,
+      row.overdue_window_minutes,
+      todayEvents,
+      now,
+      dayStartMs,
+    );
 
-      const status = computeStatus(
-        scheduledAt,
-        row.id,
-        row.overdue_window_minutes,
-        todayEvents,
-        now,
-        earliestMs,
+    const inWindow =
+      status === 'overdue' || (scheduledAt >= windowStart && scheduledAt <= windowEnd);
+    if (!inWindow) continue;
+
+    let completedByName: string | undefined;
+    if (status === 'done') {
+      const completionEvent = todayEvents.find(
+        (e) =>
+          e.scheduled_item_id === row.id &&
+          e.status === 'completed' &&
+          e.carer_id != null &&
+          new Date(e.occurred_at).getTime() >= dayStartMs &&
+          new Date(e.occurred_at).getTime() <= windowEndMs,
       );
-
-      // Overdue items always appear; others are filtered to the window.
-      const inWindow =
-        status === 'overdue' || (scheduledAt >= windowStart && scheduledAt <= windowEnd);
-      if (!inWindow) continue;
-
-      let completedByName: string | undefined;
-      if (status === 'done') {
-        const completionEvent = todayEvents.find(
-          (e) =>
-            e.scheduled_item_id === row.id &&
-            e.status === 'completed' &&
-            e.carer_id != null &&
-            new Date(e.occurred_at).getTime() >= earliestMs &&
-            new Date(e.occurred_at).getTime() <=
-              scheduledAt.getTime() + row.overdue_window_minutes * 60_000,
-        );
-        if (completionEvent?.carer_id) {
-          completedByName = carerNames[completionEvent.carer_id];
-        }
+      if (completionEvent?.carer_id) {
+        completedByName = carerNames[completionEvent.carer_id];
       }
-
-      items.push({
-        key: `${row.id}_${scheduledAt.getTime()}`,
-        scheduledItemId: row.id,
-        type: row.type,
-        name: row.name,
-        scheduledAt,
-        status,
-        isCompulsory: row.is_compulsory,
-        completedByName,
-        bolusRestMinutes: row.bolus_rest_minutes ?? undefined,
-        nutritionType: row.nutrition_type ?? undefined,
-      });
     }
+
+    items.push({
+      key: `${row.id}_${scheduledAt.getTime()}`,
+      scheduledItemId: row.id,
+      type: row.type,
+      name: row.name,
+      scheduledAt,
+      status,
+      isCompulsory: row.is_compulsory,
+      completedByName,
+      bolusRestMinutes: row.bolus_rest_minutes ?? undefined,
+      nutritionType: row.nutrition_type ?? undefined,
+    });
   }
 
   return items.sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
@@ -192,7 +165,7 @@ async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
     supabase
       .from('scheduled_items')
       .select(
-        'id, type, name, time_of_day, interval_minutes, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
+        'id, type, name, time_of_day, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
       )
       .eq('care_recipient_id', careRecipientId),
     supabase

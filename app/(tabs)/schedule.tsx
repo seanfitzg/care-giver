@@ -23,7 +23,6 @@ type ScheduledItem = {
   type: ItemType;
   name: string;
   time_of_day: string | null;
-  interval_minutes: number | null;
   overdue_window_minutes: number;
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
@@ -41,7 +40,6 @@ type ItemForm = {
   type: ItemType;
   name: string;
   time_of_day: string;
-  interval_minutes: string;
   nutrition_type: NutritionType;
   bolus_rest_minutes: string;
   overdue_window_minutes: string;
@@ -80,15 +78,8 @@ function expandOccurrences(items: ScheduledItem[]): Occurrence[] {
       continue;
     }
     const parts = item.time_of_day.split(':');
-    let mins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
-    const interval = item.interval_minutes;
-    let idx = 0;
-    do {
-      result.push({ ...item, occurrenceKey: `${item.id}_${idx}`, occurrenceMinutes: mins });
-      if (!interval) break;
-      mins += interval;
-      idx++;
-    } while (mins < 1440);
+    const mins = parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    result.push({ ...item, occurrenceKey: `${item.id}_0`, occurrenceMinutes: mins });
   }
   result.sort((a, b) => {
     if (a.occurrenceMinutes === null) return 1;
@@ -123,7 +114,6 @@ function blankItemForm(type: ItemType): ItemForm {
     type,
     name: type === 'nutrition' ? 'Nutrition' : '',
     time_of_day: '',
-    interval_minutes: '300',
     nutrition_type: 'bolus',
     bolus_rest_minutes: '20',
     overdue_window_minutes: '60',
@@ -138,7 +128,6 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     type: item.type,
     name: item.name,
     time_of_day: fmtTime(item.time_of_day),
-    interval_minutes: String(item.interval_minutes ?? 180),
     nutrition_type: item.nutrition_type ?? 'bolus',
     bolus_rest_minutes: item.bolus_rest_minutes != null ? String(item.bolus_rest_minutes) : '20',
     overdue_window_minutes: String(item.overdue_window_minutes),
@@ -161,7 +150,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,time_of_day,interval_minutes,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
+          'id,type,name,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -186,11 +175,8 @@ export default function ScheduleScreen() {
       };
 
       if (form.type === 'nutrition') {
-        const interval = parseInt(form.interval_minutes, 10);
-        if (!interval || interval < 1) throw new Error('Interval must be a positive number.');
         const time = parseTime(form.time_of_day);
-        if (!time) throw new Error('Enter a valid start time (HH:MM).');
-        payload.interval_minutes = interval;
+        if (!time) throw new Error('Enter a valid time (HH:MM).');
         payload.nutrition_type = form.nutrition_type;
         payload.time_of_day = time;
         if (form.nutrition_type === 'bolus') {
@@ -463,41 +449,8 @@ function ScheduledItemModal({
               </Pressable>
             ))}
           </View>
-          <FieldLabel>First session at</FieldLabel>
+          <FieldLabel>Time</FieldLabel>
           <TimePicker value={form.time_of_day} onChange={(v) => set({ time_of_day: v })} />
-          <FieldLabel>Interval between sessions</FieldLabel>
-          <View style={s.hmsRow}>
-            <View style={s.hmsField}>
-              <TextInput
-                style={s.input}
-                value={String(Math.floor(parseInt(form.interval_minutes || '0', 10) / 60))}
-                onChangeText={(v) => {
-                  const h = Math.max(0, parseInt(v || '0', 10) || 0);
-                  const m = parseInt(form.interval_minutes || '0', 10) % 60;
-                  set({ interval_minutes: String(h * 60 + m) });
-                }}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="#9ca3af"
-              />
-              <Text style={s.hmsLabel}>hrs</Text>
-            </View>
-            <View style={s.hmsField}>
-              <TextInput
-                style={s.input}
-                value={String(parseInt(form.interval_minutes || '0', 10) % 60)}
-                onChangeText={(v) => {
-                  const m = Math.min(59, Math.max(0, parseInt(v || '0', 10) || 0));
-                  const h = Math.floor(parseInt(form.interval_minutes || '0', 10) / 60);
-                  set({ interval_minutes: String(h * 60 + m) });
-                }}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor="#9ca3af"
-              />
-              <Text style={s.hmsLabel}>min</Text>
-            </View>
-          </View>
           {form.nutrition_type === 'bolus' && (
             <>
               <FieldLabel>Default rest period between boluses (minutes)</FieldLabel>
@@ -710,15 +663,6 @@ const s = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
     backgroundColor: '#fff',
-  },
-  hmsRow: { flexDirection: 'row', gap: 12, marginBottom: 0 },
-  hmsField: { flex: 1 },
-  hmsLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-    marginTop: -10,
-    marginBottom: 16,
   },
   segRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   seg: {

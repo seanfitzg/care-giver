@@ -104,7 +104,7 @@ ON CONFLICT (user_id, care_recipient_id) DO NOTHING;
 
 INSERT INTO public.scheduled_items (
   id, care_recipient_id, type, name,
-  time_of_day, interval_minutes,
+  time_of_day,
   overdue_window_minutes,
   is_compulsory, bolus_rest_minutes, nutrition_type,
   created_by
@@ -114,7 +114,7 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000001',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'medication_scheduled', 'Morning Meds',
-    '08:00', null, 60, true, null, null,
+    '08:00', 60, true, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Evening medication (supplement)
@@ -122,15 +122,31 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000002',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'medication_scheduled', 'Evening Supplement',
-    '20:00', null, 90, false, null, null,
+    '20:00', 90, false, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
-  -- Nutrition (bolus, every 4 hours starting 08:00, 20 min bolus rest)
+  -- Nutrition: morning bolus feed
   (
     'bbbbbbbb-0000-0000-0000-000000000003',
     'aaaaaaaa-0000-0000-0000-000000000001',
-    'nutrition', 'PEG Feed',
-    '08:00', 240, 120, true, 20, 'bolus',
+    'nutrition', 'Morning Feed',
+    '08:00', 120, true, 20, 'bolus',
+    '00000000-0000-0000-0000-000000000001'
+  ),
+  -- Nutrition: midday bolus feed
+  (
+    'bbbbbbbb-0000-0000-0000-000000000006',
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'nutrition', 'Midday Feed',
+    '12:00', 120, true, 20, 'bolus',
+    '00000000-0000-0000-0000-000000000001'
+  ),
+  -- Nutrition: evening bolus feed
+  (
+    'bbbbbbbb-0000-0000-0000-000000000007',
+    'aaaaaaaa-0000-0000-0000-000000000001',
+    'nutrition', 'Evening Feed',
+    '18:00', 120, true, 20, 'bolus',
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Stander activity
@@ -138,7 +154,7 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000004',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'activity', 'Stander Time',
-    '10:00', null, 120, true, null, null,
+    '10:00', 120, true, null, null,
     '00000000-0000-0000-0000-000000000001'
   ),
   -- Physio exercises — wide overdue window so it stays overdue most of the day
@@ -146,14 +162,13 @@ INSERT INTO public.scheduled_items (
     'bbbbbbbb-0000-0000-0000-000000000005',
     'aaaaaaaa-0000-0000-0000-000000000001',
     'activity', 'Physio Exercises',
-    '07:00', null, 960, true, null, null,
+    '07:00', 960, true, null, null,
     '00000000-0000-0000-0000-000000000001'
   )
 ON CONFLICT (id) DO UPDATE SET
   type = EXCLUDED.type,
   name = EXCLUDED.name,
   time_of_day = EXCLUDED.time_of_day,
-  interval_minutes = EXCLUDED.interval_minutes,
   overdue_window_minutes = EXCLUDED.overdue_window_minutes,
   is_compulsory = EXCLUDED.is_compulsory,
   bolus_rest_minutes = EXCLUDED.bolus_rest_minutes,
@@ -180,7 +195,7 @@ INSERT INTO public.event_log (
     current_date + interval '8 hours 10 minutes',
     'missed'
   ),
-  -- PEG Feed (08:00 slot): completed
+  -- Morning Feed (08:00): completed
   (
     'aaaaaaaa-0000-0000-0000-000000000001',
     'nutrition',
@@ -198,11 +213,11 @@ INSERT INTO public.event_log (
     current_date + interval '10 hours 25 minutes',
     'missed'
   ),
-  -- PEG Feed (12:00 slot): missed
+  -- Midday Feed (12:00): missed
   (
     'aaaaaaaa-0000-0000-0000-000000000001',
     'nutrition',
-    'bbbbbbbb-0000-0000-0000-000000000003',
+    'bbbbbbbb-0000-0000-0000-000000000006',
     '00000000-0000-0000-0000-000000000002',
     current_date + interval '12 hours 8 minutes',
     'missed'
