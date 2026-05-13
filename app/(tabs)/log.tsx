@@ -286,15 +286,16 @@ export default function LogScreen() {
               <DateTimePicker
                 value={date}
                 mode="date"
-                display="spinner"
+                display="inline"
                 maximumDate={today}
+                style={styles.inlinePicker}
                 onChange={(_event, selected) => {
-                  if (selected) setDate(startOfDay(selected));
+                  if (selected) {
+                    setDate(startOfDay(selected));
+                    setShowPicker(false);
+                  }
                 }}
               />
-              <Pressable onPress={() => setShowPicker(false)} style={styles.pickerDoneBtn}>
-                <Text style={styles.pickerDoneText}>Done</Text>
-              </Pressable>
             </Pressable>
           </Pressable>
         </Modal>
@@ -349,20 +350,14 @@ const styles = StyleSheet.create({
   modalCard: {
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 8,
-    width: 320,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 8,
   },
-  pickerDoneBtn: {
-    alignItems: 'flex-end',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  pickerDoneText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+  inlinePicker: { width: 360, height: 380 },
 
   /* Filter chips */
   chipsScroll: { marginBottom: 12 },
