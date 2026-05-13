@@ -11,6 +11,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+type FilterChip = 'all' | 'medication' | 'nutrition' | 'activity';
+
+const CHIPS: { key: FilterChip; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'medication', label: 'Medication' },
+  { key: 'nutrition', label: 'Nutrition' },
+  { key: 'activity', label: 'Activity' },
+];
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { TimePicker } from '@/components/TimePicker';
@@ -22,6 +31,7 @@ type ScheduledItem = {
   id: string;
   type: ItemType;
   name: string;
+  description: string | null;
   time_of_day: string | null;
   overdue_window_minutes: number;
   is_compulsory: boolean;
@@ -39,6 +49,7 @@ type ItemForm = {
   editId: string | null;
   type: ItemType;
   name: string;
+  description: string;
   time_of_day: string;
   nutrition_type: NutritionType;
   bolus_rest_minutes: string;
@@ -113,6 +124,7 @@ function blankItemForm(type: ItemType): ItemForm {
     editId: null,
     type,
     name: type === 'nutrition' ? 'Nutrition' : '',
+    description: '',
     time_of_day: '',
     nutrition_type: 'bolus',
     bolus_rest_minutes: '20',
@@ -127,6 +139,7 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     editId: item.id,
     type: item.type,
     name: item.name,
+    description: item.description ?? '',
     time_of_day: fmtTime(item.time_of_day),
     nutrition_type: item.nutrition_type ?? 'bolus',
     bolus_rest_minutes: item.bolus_rest_minutes != null ? String(item.bolus_rest_minutes) : '20',
@@ -143,6 +156,7 @@ export default function ScheduleScreen() {
   const [itemForm, setItemForm] = useState<ItemForm | null>(null);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ScheduledItem | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterChip>('all');
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['scheduled_items', careRecipientId],
@@ -150,7 +164,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
+          'id,type,name,description,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -170,6 +184,7 @@ export default function ScheduleScreen() {
         care_recipient_id: careRecipientId,
         type: form.type,
         name: form.name.trim(),
+        description: form.description.trim() || null,
         overdue_window_minutes: overdue,
         is_compulsory: form.is_compulsory,
       };
@@ -230,7 +245,12 @@ export default function ScheduleScreen() {
     },
   });
 
-  const occurrences = expandOccurrences(items);
+  const allOccurrences = expandOccurrences(items);
+  const occurrences = allOccurrences.filter((occ) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'medication') return occ.type === 'medication_scheduled';
+    return occ.type === activeFilter;
+  });
 
   if (isLoading) {
     return (
@@ -241,7 +261,27 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <>
+    <View style={s.flex}>
+      <View style={s.stickyHeader}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.chipsRow}
+        >
+          {CHIPS.map((chip) => {
+            const active = activeFilter === chip.key;
+            return (
+              <Pressable
+                key={chip.key}
+                onPress={() => setActiveFilter(chip.key)}
+                style={[s.chip, active && s.chipActive]}
+              >
+                <Text style={[s.chipText, active && s.chipTextActive]}>{chip.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
       <ScrollView style={s.container} contentContainerStyle={s.content}>
         {canEdit && (
           <Pressable style={s.addRow} onPress={() => setTypePickerOpen(true)}>
@@ -331,7 +371,7 @@ export default function ScheduleScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </>
+    </View>
   );
 }
 
@@ -363,6 +403,11 @@ function OccurrenceRow({
       <Text style={s.timeText}>{timeStr}</Text>
       <View style={s.rowMid}>
         <Text style={s.rowName}>{occurrence.name}</Text>
+        {occurrence.description ? (
+          <Text style={s.rowDescription} numberOfLines={2}>
+            {occurrence.description}
+          </Text>
+        ) : null}
         {(detail || showCompulsory) && (
           <View style={s.badgeRow}>
             {detail && (
@@ -424,6 +469,18 @@ function ScheduledItemModal({
         onChangeText={(v) => set({ name: v })}
         placeholder="Name"
         placeholderTextColor="#9ca3af"
+      />
+
+      <FieldLabel>Description (optional)</FieldLabel>
+      <TextInput
+        style={[s.input, s.inputMultiline]}
+        value={form.description}
+        onChangeText={(v) => set({ description: v })}
+        placeholder="e.g. 1ml Baclofen via NG tube"
+        placeholderTextColor="#9ca3af"
+        multiline
+        numberOfLines={3}
+        textAlignVertical="top"
       />
 
       {form.type !== 'nutrition' && (
@@ -532,8 +589,30 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  flex: { flex: 1 },
   container: { flex: 1, backgroundColor: '#f9fafb' },
   content: { padding: 16, gap: 10 },
+
+  stickyHeader: {
+    backgroundColor: '#f9fafb',
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  chipsRow: { flexDirection: 'row', gap: 8, paddingBottom: 12 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  chipActive: { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' },
+  chipText: { fontSize: 13, color: '#374151', fontWeight: '500' },
+  chipTextActive: { color: '#fff' },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,6 +648,7 @@ const s = StyleSheet.create({
   timeText: { fontSize: 13, fontWeight: '600', color: '#374151', width: 42 },
   rowMid: { flex: 1 },
   rowName: { fontSize: 14, fontWeight: '500', color: '#111827' },
+  rowDescription: { fontSize: 12, color: '#6b7280', marginTop: 2 },
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeText: { fontSize: 11, fontWeight: '600' },
@@ -663,6 +743,9 @@ const s = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
     backgroundColor: '#fff',
+  },
+  inputMultiline: {
+    minHeight: 72,
   },
   segRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   seg: {

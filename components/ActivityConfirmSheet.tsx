@@ -45,6 +45,11 @@ export function ActivityConfirmSheet({ item, visible, isLoading, onConfirm, onDi
               <>
                 <Text style={styles.activityName}>{item.name}</Text>
                 <Text style={styles.schedTime}>Scheduled {formatTime(item.scheduledAt)}</Text>
+                {item.description ? (
+                  <View style={styles.descriptionBox}>
+                    <Text style={styles.descriptionText}>{item.description}</Text>
+                  </View>
+                ) : null}
               </>
             )}
             <Text style={styles.noteLabel}>Note (optional)</Text>
@@ -163,5 +168,16 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: '#6b7280',
     fontSize: 15,
+  },
+  descriptionBox: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+  },
+  descriptionText: {
+    fontSize: 13,
+    color: '#15803d',
+    lineHeight: 18,
   },
 });

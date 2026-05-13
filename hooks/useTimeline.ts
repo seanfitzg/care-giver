@@ -11,6 +11,7 @@ export type TimelineItem = {
   scheduledItemId: string;
   type: ItemType;
   name: string;
+  description?: string;
   scheduledAt: Date;
   status: ItemStatus;
   isCompulsory: boolean;
@@ -23,6 +24,7 @@ type ScheduledItemRow = {
   id: string;
   type: ItemType;
   name: string;
+  description: string | null;
   time_of_day: string | null;
   overdue_window_minutes: number;
   is_compulsory: boolean;
@@ -143,6 +145,7 @@ export function buildTimelineItems(
       scheduledItemId: row.id,
       type: row.type,
       name: row.name,
+      description: row.description ?? undefined,
       scheduledAt,
       status,
       isCompulsory: row.is_compulsory,
@@ -165,7 +168,7 @@ async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
     supabase
       .from('scheduled_items')
       .select(
-        'id, type, name, time_of_day, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
+        'id, type, name, description, time_of_day, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
       )
       .eq('care_recipient_id', careRecipientId),
     supabase
