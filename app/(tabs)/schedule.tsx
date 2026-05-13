@@ -11,6 +11,15 @@ import {
   TextInput,
   View,
 } from 'react-native';
+
+type FilterChip = 'all' | 'medication' | 'nutrition' | 'activity';
+
+const CHIPS: { key: FilterChip; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'medication', label: 'Medication' },
+  { key: 'nutrition', label: 'Nutrition' },
+  { key: 'activity', label: 'Activity' },
+];
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { TimePicker } from '@/components/TimePicker';
@@ -143,6 +152,7 @@ export default function ScheduleScreen() {
   const [itemForm, setItemForm] = useState<ItemForm | null>(null);
   const [typePickerOpen, setTypePickerOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ScheduledItem | null>(null);
+  const [activeFilter, setActiveFilter] = useState<FilterChip>('all');
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ['scheduled_items', careRecipientId],
@@ -230,7 +240,12 @@ export default function ScheduleScreen() {
     },
   });
 
-  const occurrences = expandOccurrences(items);
+  const allOccurrences = expandOccurrences(items);
+  const occurrences = allOccurrences.filter((occ) => {
+    if (activeFilter === 'all') return true;
+    if (activeFilter === 'medication') return occ.type === 'medication_scheduled';
+    return occ.type === activeFilter;
+  });
 
   if (isLoading) {
     return (
@@ -241,7 +256,27 @@ export default function ScheduleScreen() {
   }
 
   return (
-    <>
+    <View style={s.flex}>
+      <View style={s.stickyHeader}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.chipsRow}
+        >
+          {CHIPS.map((chip) => {
+            const active = activeFilter === chip.key;
+            return (
+              <Pressable
+                key={chip.key}
+                onPress={() => setActiveFilter(chip.key)}
+                style={[s.chip, active && s.chipActive]}
+              >
+                <Text style={[s.chipText, active && s.chipTextActive]}>{chip.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
       <ScrollView style={s.container} contentContainerStyle={s.content}>
         {canEdit && (
           <Pressable style={s.addRow} onPress={() => setTypePickerOpen(true)}>
@@ -331,7 +366,7 @@ export default function ScheduleScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-    </>
+    </View>
   );
 }
 
@@ -532,8 +567,30 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  flex: { flex: 1 },
   container: { flex: 1, backgroundColor: '#f9fafb' },
   content: { padding: 16, gap: 10 },
+
+  stickyHeader: {
+    backgroundColor: '#f9fafb',
+    paddingTop: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  chipsRow: { flexDirection: 'row', gap: 8, paddingBottom: 12 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  chipActive: { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' },
+  chipText: { fontSize: 13, color: '#374151', fontWeight: '500' },
+  chipTextActive: { color: '#fff' },
   addRow: {
     flexDirection: 'row',
     alignItems: 'center',
