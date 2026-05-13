@@ -4,7 +4,6 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -183,6 +182,7 @@ export default function LogScreen() {
       n.setDate(n.getDate() - 1);
       return n;
     });
+    setShowPicker(false);
   }
 
   function nextDay() {
@@ -192,51 +192,19 @@ export default function LogScreen() {
       n.setDate(n.getDate() + 1);
       return n;
     });
+    setShowPicker(false);
   }
 
-  const header = (
-    <>
-      {/* Date navigation */}
-      <View style={styles.dateNav}>
-        <Pressable onPress={prevDay} style={styles.navBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={20} color="#374151" />
-        </Pressable>
-        <Pressable onPress={() => setShowPicker((v) => !v)} style={styles.dateLabelBtn}>
-          <Text style={styles.dateLabel}>{formatDateLabel(date)}</Text>
-          <Ionicons name="calendar-outline" size={14} color="#9ca3af" style={{ marginLeft: 4 }} />
-        </Pressable>
-        <Pressable
-          onPress={nextDay}
-          style={[styles.navBtn, isToday && styles.navBtnDisabled]}
-          disabled={isToday}
-          hitSlop={8}
-        >
-          <Ionicons name="chevron-forward" size={20} color={isToday ? '#d1d5db' : '#374151'} />
-        </Pressable>
-      </View>
-
-      {/* Filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
-        style={styles.chipsScroll}
-      >
-        {CHIPS.map((chip) => {
-          const active = activeFilter === chip.key;
-          return (
-            <Pressable
-              key={chip.key}
-              onPress={() => setActiveFilter(chip.key)}
-              style={[styles.chip, active && styles.chipActive]}
-            >
-              <Text style={[styles.chipText, active && styles.chipTextActive]}>{chip.label}</Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-    </>
-  );
+  // On iOS the inline picker fires on every tap — auto-close after selection.
+  // On Android the system dialog closes itself.
+  // On web the browser popup closes itself; the input just needs to be visible.
+  function handlePickerChange(_event: unknown, selected?: Date) {
+    if (Platform.OS === 'android') setShowPicker(false);
+    if (selected) {
+      setDate(startOfDay(selected));
+      if (Platform.OS === 'ios') setShowPicker(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -248,6 +216,66 @@ export default function LogScreen() {
 
   return (
     <View style={styles.container}>
+      {/* Sticky header — sits outside FlatList so no ScrollView z-index conflicts */}
+      <View style={styles.stickyHeader}>
+        <View style={styles.dateNav}>
+          <Pressable onPress={prevDay} style={styles.navBtn} hitSlop={8}>
+            <Ionicons name="chevron-back" size={20} color="#374151" />
+          </Pressable>
+          <Pressable onPress={() => setShowPicker((v) => !v)} style={styles.dateLabelBtn}>
+            <Text style={styles.dateLabel}>{formatDateLabel(date)}</Text>
+            <Ionicons name="calendar-outline" size={14} color="#9ca3af" style={{ marginLeft: 4 }} />
+          </Pressable>
+          <Pressable
+            onPress={nextDay}
+            style={[styles.navBtn, isToday && styles.navBtnDisabled]}
+            disabled={isToday}
+            hitSlop={8}
+          >
+            <Ionicons name="chevron-forward" size={20} color={isToday ? '#d1d5db' : '#374151'} />
+          </Pressable>
+        </View>
+
+        {/*
+         * Picker rendered inline — no Modal.
+         * Web:     <input type="date"> — small but visible; browser popup handles layering.
+         * iOS:     display="inline" shows a full month-grid calendar (~350 px tall).
+         * Android: display="default" opens a system dialog regardless of position.
+         */}
+        {showPicker && (
+          <View style={[styles.pickerPanel, Platform.OS === 'ios' && styles.pickerPanelIOS]}>
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              maximumDate={today}
+              style={Platform.OS === 'ios' ? styles.iosPicker : styles.webPicker}
+              onChange={handlePickerChange}
+            />
+          </View>
+        )}
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+          style={styles.chipsScroll}
+        >
+          {CHIPS.map((chip) => {
+            const active = activeFilter === chip.key;
+            return (
+              <Pressable
+                key={chip.key}
+                onPress={() => setActiveFilter(chip.key)}
+                style={[styles.chip, active && styles.chipActive]}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>{chip.label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       <FlatList
         contentContainerStyle={[styles.listContent, isTablet && styles.listContentTablet]}
         data={visibleEntries}
@@ -255,51 +283,10 @@ export default function LogScreen() {
         numColumns={isTablet ? 2 : 1}
         key={isTablet ? 'tablet' : 'phone'}
         columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
-        ListHeaderComponent={header}
         ListEmptyComponent={<Text style={styles.empty}>No events for this day.</Text>}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
         renderItem={({ item }) => <LogCard entry={item} carerNames={carerNames} wide={isTablet} />}
       />
-
-      {/* Date picker — rendered in a Modal so it sits above all content */}
-      {Platform.OS === 'android' ? (
-        showPicker && (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            maximumDate={today}
-            onChange={(_event, selected) => {
-              setShowPicker(false);
-              if (selected) setDate(startOfDay(selected));
-            }}
-          />
-        )
-      ) : (
-        <Modal
-          visible={showPicker}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowPicker(false)}
-        >
-          <Pressable style={styles.modalOverlay} onPress={() => setShowPicker(false)}>
-            <Pressable style={styles.modalCard}>
-              <DateTimePicker
-                value={date}
-                mode="date"
-                display="inline"
-                maximumDate={today}
-                style={styles.inlinePicker}
-                onChange={(_event, selected) => {
-                  if (selected) {
-                    setDate(startOfDay(selected));
-                    setShowPicker(false);
-                  }
-                }}
-              />
-            </Pressable>
-          </Pressable>
-        </Modal>
-      )}
     </View>
   );
 }
@@ -307,9 +294,15 @@ export default function LogScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { padding: 16, paddingBottom: 32 },
-  listContentTablet: { paddingHorizontal: 24 },
-  columnWrapper: { gap: 12 },
+
+  /* Sticky header */
+  stickyHeader: {
+    backgroundColor: '#f9fafb',
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
 
   /* Date nav */
   dateNav: {
@@ -340,24 +333,22 @@ const styles = StyleSheet.create({
   },
   dateLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
 
-  /* Date picker modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
+  /* Inline picker panel */
+  pickerPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 8,
+    padding: 8,
     alignItems: 'center',
   },
-  modalCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+  pickerPanelIOS: {
+    // Extra height to accommodate the iOS inline calendar grid
+    paddingVertical: 0,
   },
-  inlinePicker: { width: 360, height: 380 },
+  iosPicker: { width: '100%', height: 350 },
+  webPicker: { width: '100%' },
 
   /* Filter chips */
   chipsScroll: { marginBottom: 12 },
@@ -373,6 +364,11 @@ const styles = StyleSheet.create({
   chipActive: { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' },
   chipText: { fontSize: 13, color: '#374151', fontWeight: '500' },
   chipTextActive: { color: '#fff' },
+
+  /* Entries list */
+  listContent: { padding: 16, paddingBottom: 32 },
+  listContentTablet: { paddingHorizontal: 24 },
+  columnWrapper: { gap: 12 },
 
   /* Log card */
   card: {
@@ -416,14 +412,8 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
-  badgePRN: {
-    backgroundColor: '#f5f3ff',
-    borderColor: '#ddd6fe',
-  },
-  badgeCatchUp: {
-    backgroundColor: '#fffbeb',
-    borderColor: '#fde68a',
-  },
+  badgePRN: { backgroundColor: '#f5f3ff', borderColor: '#ddd6fe' },
+  badgeCatchUp: { backgroundColor: '#fffbeb', borderColor: '#fde68a' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
 });
