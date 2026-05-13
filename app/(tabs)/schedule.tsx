@@ -230,6 +230,7 @@ export default function ScheduleScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scheduled_items', careRecipientId] });
+      qc.invalidateQueries({ queryKey: ['timeline', careRecipientId] });
       setItemForm(null);
     },
   });
@@ -241,6 +242,7 @@ export default function ScheduleScreen() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scheduled_items', careRecipientId] });
+      qc.invalidateQueries({ queryKey: ['timeline', careRecipientId] });
       setDeleteTarget(null);
     },
   });

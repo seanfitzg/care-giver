@@ -9,8 +9,8 @@ export type CareLogEntry = {
   notes: string | null;
   carer_id: string | null;
   bulk_confirmed: boolean;
-  scheduled_item: { name: string } | null;
-  prn_medication: { name: string } | null;
+  scheduled_item: { name: string; description: string | null } | null;
+  prn_medication: { name: string; notes: string | null } | null;
 };
 
 export function useCareLogs(careRecipientId: string | null, date: Date) {
@@ -27,7 +27,7 @@ export function useCareLogs(careRecipientId: string | null, date: Date) {
           supabase
             .from('event_log')
             .select(
-              'id, event_type, occurred_at, status, notes, carer_id, bulk_confirmed, scheduled_item:scheduled_items(name), prn_medication:as_needed_medications(name)',
+              'id, event_type, occurred_at, status, notes, carer_id, bulk_confirmed, scheduled_item:scheduled_items(name, description), prn_medication:as_needed_medications(name, notes)',
             )
             .eq('care_recipient_id', careRecipientId!)
             .gte('occurred_at', start.toISOString())

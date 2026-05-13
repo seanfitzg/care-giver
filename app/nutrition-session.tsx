@@ -54,10 +54,12 @@ export default function NutritionSessionScreen() {
     name: string;
     nutritionType: string;
     bolusRestMinutes: string;
+    description: string;
   }>();
 
   const scheduledItemId = params.scheduledItemId ?? '';
   const sessionName = params.name ?? 'Nutrition Session';
+  const description = params.description || null;
   const nutritionType = (params.nutritionType ?? 'bolus') as NutritionType;
   const defaultBolusRestMinutes = Math.max(1, parseInt(params.bolusRestMinutes ?? '20', 10));
 
@@ -247,6 +249,11 @@ export default function NutritionSessionScreen() {
         </View>
 
         <ScrollView contentContainerStyle={contentStyle} keyboardShouldPersistTaps="handled">
+          {description ? (
+            <View style={styles.descriptionCard}>
+              <Text style={styles.descriptionText}>{description}</Text>
+            </View>
+          ) : null}
           <View style={styles.prestartCard}>
             <Text style={styles.prestartTitle}>Set rest period</Text>
             <Text style={styles.prestartBody}>How long should the rest be between boluses?</Text>
@@ -510,6 +517,20 @@ const styles = StyleSheet.create({
     maxWidth: 600,
     alignSelf: 'center',
     width: '100%',
+  },
+
+  descriptionCard: {
+    backgroundColor: '#f0fdf4',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: '#15803d',
+    lineHeight: 20,
   },
 
   // ── Prestart ────────────────────────────────────────────────────────────

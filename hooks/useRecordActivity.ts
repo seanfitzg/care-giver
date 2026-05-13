@@ -54,6 +54,7 @@ export function useRecordActivity() {
     },
     onSettled: (_data, _err, vars) => {
       qc.invalidateQueries({ queryKey: ['timeline', vars.careRecipientId] });
+      qc.invalidateQueries({ queryKey: ['care-log', vars.careRecipientId] });
     },
   });
 }
