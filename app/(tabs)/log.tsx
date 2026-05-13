@@ -1,15 +1,23 @@
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  FlatList,
+  Platform,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCareLogs } from '@/hooks/useCareLogs';
 import type { CareLogEntry } from '@/hooks/useCareLogs';
+
+type FilterChip = 'all' | 'medication' | 'nutrition' | 'activity' | 'missed';
 
 type EventConfig = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -26,34 +34,43 @@ const EVENT_CONFIG: Record<CareLogEntry['event_type'], EventConfig> = {
   missed: { icon: 'alert-circle-outline', color: '#dc2626', bg: '#fef2f2', label: 'Missed' },
 };
 
-const STATUS_COLOR: Record<CareLogEntry['status'], string> = {
-  completed: '#16a34a',
-  missed: '#dc2626',
-  skipped: '#6b7280',
+const STATUS_BADGE: Record<CareLogEntry['status'], { label: string; color: string; bg: string }> = {
+  completed: { label: 'Done', color: '#16a34a', bg: '#f0fdf4' },
+  missed: { label: 'Missed', color: '#dc2626', bg: '#fef2f2' },
+  skipped: { label: 'Skipped', color: '#6b7280', bg: '#f3f4f6' },
 };
 
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const today = new Date();
-  const isToday =
-    d.getDate() === today.getDate() &&
-    d.getMonth() === today.getMonth() &&
-    d.getFullYear() === today.getFullYear();
+const CHIPS: { key: FilterChip; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'medication', label: 'Medication' },
+  { key: 'nutrition', label: 'Nutrition' },
+  { key: 'activity', label: 'Activity' },
+  { key: 'missed', label: 'Missed' },
+];
 
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return `Today ${time}`;
+function startOfDay(d: Date): Date {
+  const r = new Date(d);
+  r.setHours(0, 0, 0, 0);
+  return r;
+}
 
+function formatDateLabel(d: Date): string {
+  const today = startOfDay(new Date());
   const yesterday = new Date(today);
   yesterday.setDate(today.getDate() - 1);
-  const isYesterday =
-    d.getDate() === yesterday.getDate() &&
-    d.getMonth() === yesterday.getMonth() &&
-    d.getFullYear() === yesterday.getFullYear();
-  if (isYesterday) return `Yesterday ${time}`;
 
-  return (
-    d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + ` ${time}`
-  );
+  if (d.getTime() === today.getTime()) return 'Today';
+  if (d.getTime() === yesterday.getTime()) return 'Yesterday';
+  return d.toLocaleDateString([], {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 function entryName(entry: CareLogEntry): string {
@@ -65,16 +82,19 @@ function entryName(entry: CareLogEntry): string {
 function LogCard({
   entry,
   carerNames,
+  wide,
 }: {
   entry: CareLogEntry;
   carerNames: Record<string, string>;
+  wide: boolean;
 }) {
-  const cfg = EVENT_CONFIG[entry.event_type];
+  const cfg = EVENT_CONFIG[entry.event_type] ?? EVENT_CONFIG.missed;
+  const statusBadge = STATUS_BADGE[entry.status];
   const carerName = entry.carer_id ? carerNames[entry.carer_id] : null;
   const isPRN = entry.event_type === 'as_needed_medication';
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, wide && styles.cardWide]}>
       <View style={[styles.iconBox, { backgroundColor: cfg.bg }]}>
         <Ionicons name={cfg.icon} size={18} color={cfg.color} />
       </View>
@@ -84,16 +104,29 @@ function LogCard({
             {entryName(entry)}
           </Text>
           {isPRN && (
-            <View style={styles.prnBadge}>
-              <Text style={styles.prnBadgeText}>PRN</Text>
+            <View style={[styles.badge, styles.badgePRN]}>
+              <Text style={[styles.badgeText, { color: '#7c3aed' }]}>PRN</Text>
             </View>
           )}
+          {entry.bulk_confirmed && (
+            <View style={[styles.badge, styles.badgeCatchUp]}>
+              <Text style={[styles.badgeText, { color: '#b45309' }]}>Catch-up</Text>
+            </View>
+          )}
+          <View style={[styles.badge, { backgroundColor: statusBadge.bg }]}>
+            <Text style={[styles.badgeText, { color: statusBadge.color }]}>
+              {statusBadge.label}
+            </Text>
+          </View>
         </View>
-        <Text style={styles.cardTime}>{formatDateTime(entry.occurred_at)}</Text>
+        <Text style={styles.cardTime}>{formatTime(entry.occurred_at)}</Text>
         {carerName ? (
-          <Text style={[styles.cardCarer, { color: STATUS_COLOR[entry.status] }]}>
-            {entry.status === 'completed' ? 'By' : entry.status} {carerName}
+          <Text style={styles.cardCarer}>
+            {entry.status === 'completed' ? 'By' : entry.status === 'skipped' ? 'Skipped by' : ''}{' '}
+            {carerName}
           </Text>
+        ) : entry.status === 'missed' ? (
+          <Text style={styles.cardCarerMissed}>Not completed</Text>
         ) : null}
         {entry.notes ? <Text style={styles.cardNotes}>{entry.notes}</Text> : null}
       </View>
@@ -102,11 +135,128 @@ function LogCard({
 }
 
 export default function LogScreen() {
-  const { careRecipientId } = useAuth();
-  const { data, isLoading, refetch } = useCareLogs(careRecipientId);
+  const { careRecipientId, user, isAdmin } = useAuth();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
 
-  const entries = data?.entries ?? [];
+  const [date, setDate] = useState(() => startOfDay(new Date()));
+  const [showPicker, setShowPicker] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<FilterChip>('all');
+
+  const today = startOfDay(new Date());
+  const isToday = date.getTime() === today.getTime();
+
+  const { data, isLoading, refetch } = useCareLogs(careRecipientId, date);
+
   const carerNames = data?.carerNames ?? {};
+
+  const visibleEntries = useMemo(() => {
+    const entries = data?.entries ?? [];
+    // Non-admins only see their own events plus system-generated missed events (null carer)
+    let list = isAdmin
+      ? entries
+      : entries.filter((e) => e.carer_id === user?.id || e.carer_id === null);
+
+    switch (activeFilter) {
+      case 'medication':
+        list = list.filter(
+          (e) => e.event_type === 'medication_scheduled' || e.event_type === 'as_needed_medication',
+        );
+        break;
+      case 'nutrition':
+        list = list.filter((e) => e.event_type === 'nutrition');
+        break;
+      case 'activity':
+        list = list.filter((e) => e.event_type === 'activity');
+        break;
+      case 'missed':
+        list = list.filter((e) => e.status === 'missed');
+        break;
+    }
+    return list;
+  }, [data?.entries, activeFilter, isAdmin, user?.id]);
+
+  function prevDay() {
+    setDate((d) => {
+      const n = new Date(d);
+      n.setDate(n.getDate() - 1);
+      return n;
+    });
+  }
+
+  function nextDay() {
+    if (isToday) return;
+    setDate((d) => {
+      const n = new Date(d);
+      n.setDate(n.getDate() + 1);
+      return n;
+    });
+  }
+
+  const header = (
+    <>
+      {/* Date navigation */}
+      <View style={styles.dateNav}>
+        <Pressable onPress={prevDay} style={styles.navBtn} hitSlop={8}>
+          <Ionicons name="chevron-back" size={20} color="#374151" />
+        </Pressable>
+        <Pressable onPress={() => setShowPicker((v) => !v)} style={styles.dateLabelBtn}>
+          <Text style={styles.dateLabel}>{formatDateLabel(date)}</Text>
+          <Ionicons name="calendar-outline" size={14} color="#9ca3af" style={{ marginLeft: 4 }} />
+        </Pressable>
+        <Pressable
+          onPress={nextDay}
+          style={[styles.navBtn, isToday && styles.navBtnDisabled]}
+          disabled={isToday}
+          hitSlop={8}
+        >
+          <Ionicons name="chevron-forward" size={20} color={isToday ? '#d1d5db' : '#374151'} />
+        </Pressable>
+      </View>
+
+      {/* Date picker */}
+      {showPicker && (
+        <View style={styles.pickerWrapper}>
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            maximumDate={today}
+            onChange={(_event, selected) => {
+              if (Platform.OS === 'android') setShowPicker(false);
+              if (selected) setDate(startOfDay(selected));
+            }}
+          />
+          {Platform.OS === 'ios' && (
+            <Pressable onPress={() => setShowPicker(false)} style={styles.pickerDoneBtn}>
+              <Text style={styles.pickerDoneText}>Done</Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Filter chips */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsRow}
+        style={styles.chipsScroll}
+      >
+        {CHIPS.map((chip) => {
+          const active = activeFilter === chip.key;
+          return (
+            <Pressable
+              key={chip.key}
+              onPress={() => setActiveFilter(chip.key)}
+              style={[styles.chip, active && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]}>{chip.label}</Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </>
+  );
 
   if (isLoading) {
     return (
@@ -117,28 +267,90 @@ export default function LogScreen() {
   }
 
   return (
-    <ScrollView
+    <FlatList
       style={styles.container}
-      contentContainerStyle={styles.scroll}
+      contentContainerStyle={[styles.listContent, isTablet && styles.listContentTablet]}
+      data={visibleEntries}
+      keyExtractor={(item) => item.id}
+      numColumns={isTablet ? 2 : 1}
+      key={isTablet ? 'tablet' : 'phone'}
+      columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
+      ListHeaderComponent={header}
+      ListEmptyComponent={<Text style={styles.empty}>No events for this day.</Text>}
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
-    >
-      <Text style={styles.windowLabel}>Last 7 days</Text>
-      {entries.length === 0 ? (
-        <Text style={styles.empty}>No events recorded yet.</Text>
-      ) : (
-        entries.map((entry) => <LogCard key={entry.id} entry={entry} carerNames={carerNames} />)
-      )}
-    </ScrollView>
+      renderItem={({ item }) => <LogCard entry={item} carerNames={carerNames} wide={isTablet} />}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f9fafb' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 16, paddingBottom: 32 },
-  windowLabel: { fontSize: 11, color: '#9ca3af', textAlign: 'center', marginBottom: 12 },
-  empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
+  listContent: { padding: 16, paddingBottom: 32 },
+  listContentTablet: { paddingHorizontal: 24 },
+  columnWrapper: { gap: 12 },
 
+  /* Date nav */
+  dateNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  navBtn: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  navBtnDisabled: { opacity: 0.35 },
+  dateLabelBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    marginHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  dateLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
+
+  /* Date picker */
+  pickerWrapper: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    overflow: 'hidden',
+  },
+  pickerDoneBtn: {
+    alignItems: 'flex-end',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  pickerDoneText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
+
+  /* Filter chips */
+  chipsScroll: { marginBottom: 12 },
+  chipsRow: { flexDirection: 'row', gap: 8 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  chipActive: { backgroundColor: '#1d4ed8', borderColor: '#1d4ed8' },
+  chipText: { fontSize: 13, color: '#374151', fontWeight: '500' },
+  chipTextActive: { color: '#fff' },
+
+  /* Log card */
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -152,7 +364,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 4,
     elevation: 1,
+    flex: 1,
   },
+  cardWide: { marginBottom: 0 },
   iconBox: {
     width: 36,
     height: 36,
@@ -162,19 +376,30 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   cardBody: { flex: 1, minWidth: 0 },
-  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  cardRow: { flexDirection: 'row', alignItems: 'center', gap: 5, flexWrap: 'wrap' },
   cardName: { fontSize: 14, fontWeight: '500', color: '#111827', flexShrink: 1 },
   cardTime: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
-  cardCarer: { fontSize: 11, marginTop: 2 },
+  cardCarer: { fontSize: 11, color: '#6b7280', marginTop: 2 },
+  cardCarerMissed: { fontSize: 11, color: '#dc2626', marginTop: 2 },
   cardNotes: { fontSize: 12, color: '#6b7280', marginTop: 4, fontStyle: 'italic' },
 
-  prnBadge: {
-    backgroundColor: '#f5f3ff',
+  /* Badges */
+  badge: {
     borderRadius: 4,
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
+  badgePRN: {
+    backgroundColor: '#f5f3ff',
     borderColor: '#ddd6fe',
   },
-  prnBadgeText: { fontSize: 10, fontWeight: '700', color: '#7c3aed', letterSpacing: 0.5 },
+  badgeCatchUp: {
+    backgroundColor: '#fffbeb',
+    borderColor: '#fde68a',
+  },
+
+  empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
 });
