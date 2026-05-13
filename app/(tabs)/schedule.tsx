@@ -31,6 +31,7 @@ type ScheduledItem = {
   id: string;
   type: ItemType;
   name: string;
+  description: string | null;
   time_of_day: string | null;
   overdue_window_minutes: number;
   is_compulsory: boolean;
@@ -48,6 +49,7 @@ type ItemForm = {
   editId: string | null;
   type: ItemType;
   name: string;
+  description: string;
   time_of_day: string;
   nutrition_type: NutritionType;
   bolus_rest_minutes: string;
@@ -122,6 +124,7 @@ function blankItemForm(type: ItemType): ItemForm {
     editId: null,
     type,
     name: type === 'nutrition' ? 'Nutrition' : '',
+    description: '',
     time_of_day: '',
     nutrition_type: 'bolus',
     bolus_rest_minutes: '20',
@@ -136,6 +139,7 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     editId: item.id,
     type: item.type,
     name: item.name,
+    description: item.description ?? '',
     time_of_day: fmtTime(item.time_of_day),
     nutrition_type: item.nutrition_type ?? 'bolus',
     bolus_rest_minutes: item.bolus_rest_minutes != null ? String(item.bolus_rest_minutes) : '20',
@@ -160,7 +164,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
+          'id,type,name,description,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -180,6 +184,7 @@ export default function ScheduleScreen() {
         care_recipient_id: careRecipientId,
         type: form.type,
         name: form.name.trim(),
+        description: form.description.trim() || null,
         overdue_window_minutes: overdue,
         is_compulsory: form.is_compulsory,
       };
@@ -398,6 +403,11 @@ function OccurrenceRow({
       <Text style={s.timeText}>{timeStr}</Text>
       <View style={s.rowMid}>
         <Text style={s.rowName}>{occurrence.name}</Text>
+        {occurrence.description ? (
+          <Text style={s.rowDescription} numberOfLines={2}>
+            {occurrence.description}
+          </Text>
+        ) : null}
         {(detail || showCompulsory) && (
           <View style={s.badgeRow}>
             {detail && (
@@ -459,6 +469,18 @@ function ScheduledItemModal({
         onChangeText={(v) => set({ name: v })}
         placeholder="Name"
         placeholderTextColor="#9ca3af"
+      />
+
+      <FieldLabel>Description (optional)</FieldLabel>
+      <TextInput
+        style={[s.input, s.inputMultiline]}
+        value={form.description}
+        onChangeText={(v) => set({ description: v })}
+        placeholder="e.g. 1ml Baclofen via NG tube"
+        placeholderTextColor="#9ca3af"
+        multiline
+        numberOfLines={3}
+        textAlignVertical="top"
       />
 
       {form.type !== 'nutrition' && (
@@ -626,6 +648,7 @@ const s = StyleSheet.create({
   timeText: { fontSize: 13, fontWeight: '600', color: '#374151', width: 42 },
   rowMid: { flex: 1 },
   rowName: { fontSize: 14, fontWeight: '500', color: '#111827' },
+  rowDescription: { fontSize: 12, color: '#6b7280', marginTop: 2 },
   badgeRow: { flexDirection: 'row', gap: 6, marginTop: 4, flexWrap: 'wrap' },
   badge: { borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   badgeText: { fontSize: 11, fontWeight: '600' },
@@ -720,6 +743,9 @@ const s = StyleSheet.create({
     color: '#111827',
     marginBottom: 16,
     backgroundColor: '#fff',
+  },
+  inputMultiline: {
+    minHeight: 72,
   },
   segRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   seg: {

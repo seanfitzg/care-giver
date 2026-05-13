@@ -45,6 +45,11 @@ export function MedicationConfirmSheet({ item, visible, isLoading, onConfirm, on
               <>
                 <Text style={styles.medName}>{item.name}</Text>
                 <Text style={styles.schedTime}>Scheduled {formatTime(item.scheduledAt)}</Text>
+                {item.description ? (
+                  <View style={styles.descriptionBox}>
+                    <Text style={styles.descriptionText}>{item.description}</Text>
+                  </View>
+                ) : null}
               </>
             )}
             <Text style={styles.noteLabel}>Note (optional)</Text>
@@ -163,5 +168,16 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     color: '#6b7280',
     fontSize: 15,
+  },
+  descriptionBox: {
+    backgroundColor: '#eff6ff',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 16,
+  },
+  descriptionText: {
+    fontSize: 13,
+    color: '#1d4ed8',
+    lineHeight: 18,
   },
 });
