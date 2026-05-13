@@ -4,6 +4,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -70,12 +71,14 @@ function TaskCard({
   onRecord,
   onSkip,
   onQuickDone,
+  onViewDetail,
 }: {
   item: TimelineItem;
   variant?: 'default' | 'overdue';
   onRecord?: (item: TimelineItem) => void;
   onSkip?: (item: TimelineItem) => void;
   onQuickDone?: (item: TimelineItem) => void;
+  onViewDetail?: (item: TimelineItem) => void;
 }) {
   const isDone = item.status === 'done';
   const canRecord = (item.status === 'overdue' || item.status === 'upcoming') && !!onRecord;
@@ -107,7 +110,10 @@ function TaskCard({
 
   if (canQuickDone) {
     return (
-      <View style={cardStyle}>
+      <Pressable
+        style={({ pressed }) => [...cardStyle, onViewDetail && pressed && styles.cardPressed]}
+        onPress={() => onViewDetail?.(item)}
+      >
         {bodyContent}
         <View style={styles.cardActions}>
           <Pressable
@@ -120,16 +126,19 @@ function TaskCard({
             </Text>
           </Pressable>
           <Pressable style={styles.skipBtn} onPress={() => onQuickDone(item)}>
-            <Text style={styles.skipBtnText}>This is done</Text>
+            <Text style={styles.skipBtnText}>Mark as done</Text>
           </Pressable>
         </View>
-      </View>
+      </Pressable>
     );
   }
 
   if (canSkip) {
     return (
-      <View style={cardStyle}>
+      <Pressable
+        style={({ pressed }) => [...cardStyle, onViewDetail && pressed && styles.cardPressed]}
+        onPress={() => onViewDetail?.(item)}
+      >
         {bodyContent}
         <View style={styles.cardActions}>
           <Pressable
@@ -149,7 +158,7 @@ function TaskCard({
             <Text style={styles.skipBtnText}>Skip for Today</Text>
           </Pressable>
         </View>
-      </View>
+      </Pressable>
     );
   }
 
@@ -184,6 +193,17 @@ function TaskCard({
     );
   }
 
+  if (onViewDetail) {
+    return (
+      <Pressable
+        style={({ pressed }) => [...cardStyle, pressed && styles.cardPressed]}
+        onPress={() => onViewDetail(item)}
+      >
+        {cardContent}
+      </Pressable>
+    );
+  }
+
   return <View style={cardStyle}>{cardContent}</View>;
 }
 
@@ -206,6 +226,7 @@ export default function TodayScreen() {
   const { mutate: recordPRN, isPending: isPRNPending } = useRecordPRNMedication();
   const { data: prnMedications = [], isLoading: isPRNLoading } = usePRNMedications(careRecipientId);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
+  const [detailItem, setDetailItem] = useState<TimelineItem | null>(null);
   const [prnSheetVisible, setPRNSheetVisible] = useState(false);
 
   const overdue = items.filter((i) => i.status === 'overdue');
@@ -323,6 +344,7 @@ export default function TodayScreen() {
                 onRecord={handleItemTap}
                 onSkip={handleSkip}
                 onQuickDone={handleQuickDoneNutrition}
+                onViewDetail={setDetailItem}
               />
             ))}
           </View>
@@ -348,7 +370,7 @@ export default function TodayScreen() {
                   {idx < earlierToday.length - 1 && <View style={styles.spineLine} />}
                 </View>
                 <View style={styles.cardWrapper}>
-                  <TaskCard item={item} />
+                  <TaskCard item={item} onViewDetail={setDetailItem} />
                 </View>
               </View>
             ))}
@@ -398,6 +420,46 @@ export default function TodayScreen() {
         onConfirm={handleRecordPRN}
         onDismiss={() => setPRNSheetVisible(false)}
       />
+      <Modal
+        visible={!!detailItem}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDetailItem(null)}
+      >
+        <View style={styles.detailOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDetailItem(null)} />
+          <View style={styles.detailSheet}>
+            <View style={styles.detailHandle} />
+            {detailItem && (
+              <>
+                <Text style={styles.detailTypeLabel}>{TYPE_CONFIG[detailItem.type].label}</Text>
+                <Text style={styles.detailName}>{detailItem.name}</Text>
+                <Text style={styles.detailTime}>{formatTime(detailItem.scheduledAt)}</Text>
+                <StatusBadge status={detailItem.status} />
+                {detailItem.description ? (
+                  <View
+                    style={[
+                      styles.detailDescBox,
+                      { backgroundColor: TYPE_CONFIG[detailItem.type].bg },
+                    ]}
+                  >
+                    <Text
+                      style={[styles.detailDescText, { color: TYPE_CONFIG[detailItem.type].color }]}
+                    >
+                      {detailItem.description}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.detailNoDesc}>No description</Text>
+                )}
+              </>
+            )}
+            <Pressable style={styles.detailCloseBtn} onPress={() => setDetailItem(null)}>
+              <Text style={styles.detailCloseBtnText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -500,6 +562,37 @@ const styles = StyleSheet.create({
   skipBtnText: { fontSize: 12, fontWeight: '500', color: '#6b7280' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
+
+  detailOverlay: { flex: 1, justifyContent: 'flex-end' },
+  detailSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    paddingTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  detailHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  detailTypeLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
+  detailName: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 2 },
+  detailTime: { fontSize: 13, color: '#6b7280', marginBottom: 8 },
+  detailDescBox: { borderRadius: 8, padding: 10, marginTop: 16, marginBottom: 4 },
+  detailDescText: { fontSize: 14, lineHeight: 20 },
+  detailNoDesc: { fontSize: 14, color: '#9ca3af', marginTop: 16, fontStyle: 'italic' },
+  detailCloseBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 16 },
+  detailCloseBtnText: { color: '#6b7280', fontSize: 15 },
 
   fab: {
     position: 'absolute',

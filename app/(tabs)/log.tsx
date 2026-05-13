@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -83,10 +84,12 @@ function LogCard({
   entry,
   carerNames,
   wide,
+  onPress,
 }: {
   entry: CareLogEntry;
   carerNames: Record<string, string>;
   wide: boolean;
+  onPress: (entry: CareLogEntry) => void;
 }) {
   const cfg = EVENT_CONFIG[entry.event_type] ?? EVENT_CONFIG.missed;
   const statusBadge = STATUS_BADGE[entry.status];
@@ -94,7 +97,10 @@ function LogCard({
   const isPRN = entry.event_type === 'as_needed_medication';
 
   return (
-    <View style={[styles.card, wide && styles.cardWide]}>
+    <Pressable
+      style={({ pressed }) => [styles.card, wide && styles.cardWide, pressed && styles.cardPressed]}
+      onPress={() => onPress(entry)}
+    >
       <View style={[styles.iconBox, { backgroundColor: cfg.bg }]}>
         <Ionicons name={cfg.icon} size={18} color={cfg.color} />
       </View>
@@ -130,7 +136,7 @@ function LogCard({
         ) : null}
         {entry.notes ? <Text style={styles.cardNotes}>{entry.notes}</Text> : null}
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -142,6 +148,7 @@ export default function LogScreen() {
   const [date, setDate] = useState(() => startOfDay(new Date()));
   const [showPicker, setShowPicker] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterChip>('all');
+  const [selectedEntry, setSelectedEntry] = useState<CareLogEntry | null>(null);
 
   const today = startOfDay(new Date());
   const isToday = date.getTime() === today.getTime();
@@ -285,8 +292,82 @@ export default function LogScreen() {
         columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
         ListEmptyComponent={<Text style={styles.empty}>No events for this day.</Text>}
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
-        renderItem={({ item }) => <LogCard entry={item} carerNames={carerNames} wide={isTablet} />}
+        renderItem={({ item }) => (
+          <LogCard
+            entry={item}
+            carerNames={carerNames}
+            wide={isTablet}
+            onPress={setSelectedEntry}
+          />
+        )}
       />
+
+      <Modal
+        visible={!!selectedEntry}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedEntry(null)}
+      >
+        <View style={styles.detailOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSelectedEntry(null)} />
+          <View style={styles.detailSheet}>
+            <View style={styles.detailHandle} />
+            {selectedEntry &&
+              (() => {
+                const cfg = EVENT_CONFIG[selectedEntry.event_type] ?? EVENT_CONFIG.missed;
+                const statusBadge = STATUS_BADGE[selectedEntry.status];
+                const carerName = selectedEntry.carer_id
+                  ? carerNames[selectedEntry.carer_id]
+                  : null;
+                const description =
+                  selectedEntry.scheduled_item?.description ??
+                  selectedEntry.prn_medication?.notes ??
+                  null;
+                return (
+                  <>
+                    <Text style={styles.detailTypeLabel}>{cfg.label}</Text>
+                    <Text style={styles.detailName}>{entryName(selectedEntry)}</Text>
+                    <Text style={styles.detailTime}>{formatTime(selectedEntry.occurred_at)}</Text>
+                    <View style={[styles.detailBadge, { backgroundColor: statusBadge.bg }]}>
+                      <Text style={[styles.detailBadgeText, { color: statusBadge.color }]}>
+                        {statusBadge.label}
+                      </Text>
+                    </View>
+                    {carerName ? (
+                      <Text style={styles.detailCarer}>
+                        {selectedEntry.status === 'completed'
+                          ? 'By'
+                          : selectedEntry.status === 'skipped'
+                            ? 'Skipped by'
+                            : ''}{' '}
+                        {carerName}
+                      </Text>
+                    ) : null}
+                    {description ? (
+                      <View style={[styles.detailDescBox, { backgroundColor: cfg.bg }]}>
+                        <Text style={[styles.detailDescText, { color: cfg.color }]}>
+                          {description}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {selectedEntry.notes ? (
+                      <View style={styles.detailNotesBox}>
+                        <Text style={styles.detailNotesLabel}>Notes</Text>
+                        <Text style={styles.detailNotesText}>{selectedEntry.notes}</Text>
+                      </View>
+                    ) : null}
+                    {!description && !selectedEntry.notes ? (
+                      <Text style={styles.detailEmpty}>No description or notes</Text>
+                    ) : null}
+                  </>
+                );
+              })()}
+            <Pressable style={styles.detailCloseBtn} onPress={() => setSelectedEntry(null)}>
+              <Text style={styles.detailCloseBtnText}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -416,4 +497,49 @@ const styles = StyleSheet.create({
   badgeCatchUp: { backgroundColor: '#fffbeb', borderColor: '#fde68a' },
 
   empty: { textAlign: 'center', color: '#9ca3af', marginTop: 48, fontSize: 14 },
+  cardPressed: { opacity: 0.85 },
+
+  /* Detail sheet */
+  detailOverlay: { flex: 1, justifyContent: 'flex-end' },
+  detailSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
+    paddingTop: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  detailHandle: {
+    width: 36,
+    height: 4,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  detailTypeLabel: { fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4 },
+  detailName: { fontSize: 20, fontWeight: '700', color: '#111827', marginBottom: 2 },
+  detailTime: { fontSize: 13, color: '#9ca3af', marginBottom: 8 },
+  detailBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    marginBottom: 4,
+  },
+  detailBadgeText: { fontSize: 11, fontWeight: '600' },
+  detailCarer: { fontSize: 12, color: '#6b7280', marginBottom: 4 },
+  detailDescBox: { borderRadius: 8, padding: 10, marginTop: 12 },
+  detailDescText: { fontSize: 14, lineHeight: 20 },
+  detailNotesBox: { marginTop: 12 },
+  detailNotesLabel: { fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 4 },
+  detailNotesText: { fontSize: 14, color: '#374151', lineHeight: 20, fontStyle: 'italic' },
+  detailEmpty: { fontSize: 14, color: '#9ca3af', marginTop: 16, fontStyle: 'italic' },
+  detailCloseBtn: { alignItems: 'center', paddingVertical: 14, marginTop: 16 },
+  detailCloseBtnText: { color: '#6b7280', fontSize: 15 },
 });
