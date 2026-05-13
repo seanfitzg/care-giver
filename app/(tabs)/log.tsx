@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Modal,
   Platform,
   Pressable,
   RefreshControl,
@@ -214,27 +215,6 @@ export default function LogScreen() {
         </Pressable>
       </View>
 
-      {/* Date picker */}
-      {showPicker && (
-        <View style={styles.pickerWrapper}>
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={today}
-            onChange={(_event, selected) => {
-              if (Platform.OS === 'android') setShowPicker(false);
-              if (selected) setDate(startOfDay(selected));
-            }}
-          />
-          {Platform.OS === 'ios' && (
-            <Pressable onPress={() => setShowPicker(false)} style={styles.pickerDoneBtn}>
-              <Text style={styles.pickerDoneText}>Done</Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
       {/* Filter chips */}
       <ScrollView
         horizontal
@@ -267,19 +247,59 @@ export default function LogScreen() {
   }
 
   return (
-    <FlatList
-      style={styles.container}
-      contentContainerStyle={[styles.listContent, isTablet && styles.listContentTablet]}
-      data={visibleEntries}
-      keyExtractor={(item) => item.id}
-      numColumns={isTablet ? 2 : 1}
-      key={isTablet ? 'tablet' : 'phone'}
-      columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
-      ListHeaderComponent={header}
-      ListEmptyComponent={<Text style={styles.empty}>No events for this day.</Text>}
-      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
-      renderItem={({ item }) => <LogCard entry={item} carerNames={carerNames} wide={isTablet} />}
-    />
+    <View style={styles.container}>
+      <FlatList
+        contentContainerStyle={[styles.listContent, isTablet && styles.listContentTablet]}
+        data={visibleEntries}
+        keyExtractor={(item) => item.id}
+        numColumns={isTablet ? 2 : 1}
+        key={isTablet ? 'tablet' : 'phone'}
+        columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
+        ListHeaderComponent={header}
+        ListEmptyComponent={<Text style={styles.empty}>No events for this day.</Text>}
+        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
+        renderItem={({ item }) => <LogCard entry={item} carerNames={carerNames} wide={isTablet} />}
+      />
+
+      {/* Date picker — rendered in a Modal so it sits above all content */}
+      {Platform.OS === 'android' ? (
+        showPicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            maximumDate={today}
+            onChange={(_event, selected) => {
+              setShowPicker(false);
+              if (selected) setDate(startOfDay(selected));
+            }}
+          />
+        )
+      ) : (
+        <Modal
+          visible={showPicker}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowPicker(false)}
+        >
+          <Pressable style={styles.modalOverlay} onPress={() => setShowPicker(false)}>
+            <Pressable style={styles.modalCard}>
+              <DateTimePicker
+                value={date}
+                mode="date"
+                display="spinner"
+                maximumDate={today}
+                onChange={(_event, selected) => {
+                  if (selected) setDate(startOfDay(selected));
+                }}
+              />
+              <Pressable onPress={() => setShowPicker(false)} style={styles.pickerDoneBtn}>
+                <Text style={styles.pickerDoneText}>Done</Text>
+              </Pressable>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+    </View>
   );
 }
 
@@ -319,19 +339,28 @@ const styles = StyleSheet.create({
   },
   dateLabel: { fontSize: 14, fontWeight: '600', color: '#111827' },
 
-  /* Date picker */
-  pickerWrapper: {
+  /* Date picker modal */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    overflow: 'hidden',
+    borderRadius: 16,
+    padding: 8,
+    width: 320,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   pickerDoneBtn: {
     alignItems: 'flex-end',
     paddingHorizontal: 16,
-    paddingBottom: 12,
+    paddingBottom: 8,
   },
   pickerDoneText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
 
