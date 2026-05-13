@@ -8,27 +8,32 @@ export type CareLogEntry = {
   status: 'completed' | 'missed' | 'skipped';
   notes: string | null;
   carer_id: string | null;
+  bulk_confirmed: boolean;
   scheduled_item: { name: string } | null;
   prn_medication: { name: string } | null;
 };
 
-export function useCareLogs(careRecipientId: string | null) {
+export function useCareLogs(careRecipientId: string | null, date: Date) {
   return useQuery({
-    queryKey: ['care-log', careRecipientId],
+    queryKey: ['care-log', careRecipientId, date.toDateString()],
     queryFn: async () => {
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 3_600_000).toISOString();
+      const start = new Date(date);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(date);
+      end.setHours(23, 59, 59, 999);
 
       const [{ data: entries, error: entriesErr }, { data: names, error: namesErr }] =
         await Promise.all([
           supabase
             .from('event_log')
             .select(
-              'id, event_type, occurred_at, status, notes, carer_id, scheduled_item:scheduled_items(name), prn_medication:as_needed_medications(name)',
+              'id, event_type, occurred_at, status, notes, carer_id, bulk_confirmed, scheduled_item:scheduled_items(name), prn_medication:as_needed_medications(name)',
             )
             .eq('care_recipient_id', careRecipientId!)
-            .gte('occurred_at', sevenDaysAgo)
+            .gte('occurred_at', start.toISOString())
+            .lte('occurred_at', end.toISOString())
             .order('occurred_at', { ascending: false })
-            .limit(100),
+            .limit(200),
           supabase.rpc('get_carer_names', { p_care_recipient_id: careRecipientId }),
         ]);
 
