@@ -13,9 +13,11 @@ import {
   View,
 } from 'react-native';
 import { ActivityConfirmSheet } from '@/components/ActivityConfirmSheet';
+import { BulkCatchUpSheet } from '@/components/BulkCatchUpSheet';
 import { MedicationConfirmSheet } from '@/components/MedicationConfirmSheet';
 import { PRNMedicationSheet } from '@/components/PRNMedicationSheet';
 import { useAuth } from '@/contexts/AuthContext';
+import { useBulkCatchUp } from '@/hooks/useBulkCatchUp';
 import { useMarkNutritionDone } from '@/hooks/useMarkNutritionDone';
 import { useRecordActivity } from '@/hooks/useRecordActivity';
 import { useRecordMedication } from '@/hooks/useRecordMedication';
@@ -224,10 +226,12 @@ export default function TodayScreen() {
   const { mutate: skipActivity } = useSkipActivity();
   const { mutate: markNutritionDone } = useMarkNutritionDone();
   const { mutate: recordPRN, isPending: isPRNPending } = useRecordPRNMedication();
+  const { mutate: bulkCatchUp, isPending: isBulkPending } = useBulkCatchUp();
   const { data: prnMedications = [], isLoading: isPRNLoading } = usePRNMedications(careRecipientId);
   const [selectedItem, setSelectedItem] = useState<TimelineItem | null>(null);
   const [detailItem, setDetailItem] = useState<TimelineItem | null>(null);
   const [prnSheetVisible, setPRNSheetVisible] = useState(false);
+  const [catchUpSheetVisible, setCatchUpSheetVisible] = useState(false);
 
   const overdue = items.filter((i) => i.status === 'overdue');
   const earlierToday = items.filter(
@@ -288,6 +292,17 @@ export default function TodayScreen() {
     );
   }
 
+  function handleBulkCatchUp(notes: string) {
+    if (!careRecipientId || !user) return;
+    bulkCatchUp(
+      { careRecipientId, carerId: user.id, items: overdue, notes: notes.trim() || undefined },
+      {
+        onSuccess: () => setCatchUpSheetVisible(false),
+        onError: () => Alert.alert('Error', 'Failed to catch up. Please try again.'),
+      },
+    );
+  }
+
   function handleRecordPRN(medicationId: string, notes: string) {
     if (!careRecipientId || !user) return;
     recordPRN(
@@ -333,9 +348,17 @@ export default function TodayScreen() {
         {/* Overdue section */}
         {overdue.length > 0 && (
           <View style={styles.overdueBanner}>
-            <Text style={styles.overdueBannerTitle}>
-              {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
-            </Text>
+            <View style={styles.overdueBannerHeader}>
+              <Text style={styles.overdueBannerTitle}>
+                {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.catchUpBtn, pressed && styles.catchUpBtnPressed]}
+                onPress={() => setCatchUpSheetVisible(true)}
+              >
+                <Text style={styles.catchUpBtnText}>Catch up</Text>
+              </Pressable>
+            </View>
             {overdue.map((item) => (
               <TaskCard
                 key={item.key}
@@ -420,6 +443,13 @@ export default function TodayScreen() {
         onConfirm={handleRecordPRN}
         onDismiss={() => setPRNSheetVisible(false)}
       />
+      <BulkCatchUpSheet
+        items={overdue}
+        visible={catchUpSheetVisible}
+        isLoading={isBulkPending}
+        onConfirm={handleBulkCatchUp}
+        onDismiss={() => setCatchUpSheetVisible(false)}
+      />
       <Modal
         visible={!!detailItem}
         transparent
@@ -478,7 +508,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#fecaca',
   },
-  overdueBannerTitle: { fontSize: 12, fontWeight: '700', color: '#dc2626', marginBottom: 8 },
+  overdueBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  overdueBannerTitle: { fontSize: 12, fontWeight: '700', color: '#dc2626' },
+  catchUpBtn: {
+    backgroundColor: '#dc2626',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  catchUpBtnPressed: { opacity: 0.8 },
+  catchUpBtnText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   sectionHeader: { marginTop: 8, marginBottom: 6 },
   sectionHeaderText: {
