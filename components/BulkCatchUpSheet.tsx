@@ -84,7 +84,7 @@ export function BulkCatchUpSheet({ items, visible, isLoading, onConfirm, onDismi
             <Text style={styles.noteLabel}>Shared note (optional)</Text>
             <TextInput
               style={styles.noteInput}
-              placeholder="e.g. carer arrived late, all given..."
+              placeholder="e.g. all given together..."
               placeholderTextColor="#9ca3af"
               value={notes}
               onChangeText={setNotes}
