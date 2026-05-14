@@ -478,7 +478,7 @@ function ScheduledItemModal({
         style={[s.input, s.inputMultiline]}
         value={form.description}
         onChangeText={(v) => set({ description: v })}
-        placeholder="e.g. 1ml Baclofen via NG tube"
+        placeholder="Additional notes or instructions"
         placeholderTextColor="#9ca3af"
         multiline
         numberOfLines={3}
