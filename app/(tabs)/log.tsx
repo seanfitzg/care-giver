@@ -313,7 +313,7 @@ export default function LogScreen() {
             <View style={styles.detailHandle} />
             {selectedEntry &&
               (() => {
-                const cfg = EVENT_CONFIG[selectedEntry.event_type] ?? EVENT_CONFIG.missed;
+                const cfg = EVENT_CONFIG[selectedEntry.event_type];
                 const statusBadge = STATUS_BADGE[selectedEntry.status];
                 const carerName = selectedEntry.carer_id
                   ? carerNames[selectedEntry.carer_id]
