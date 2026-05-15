@@ -76,7 +76,7 @@ function TaskCard({
   onViewDetail,
 }: {
   item: TimelineItem;
-  variant?: 'default' | 'overdue';
+  variant?: 'default' | 'overdue' | 'supplement';
   onRecord?: (item: TimelineItem) => void;
   onSkip?: (item: TimelineItem) => void;
   onQuickDone?: (item: TimelineItem) => void;
@@ -90,6 +90,7 @@ function TaskCard({
   const cardStyle = [
     styles.card,
     variant === 'overdue' && styles.cardOverdue,
+    variant === 'supplement' && styles.cardSupplement,
     isDone && styles.cardDone,
   ];
 
@@ -101,6 +102,11 @@ function TaskCard({
           {item.name}
         </Text>
         <Text style={styles.cardTime}>{formatTime(item.scheduledAt)}</Text>
+        {item.type === 'medication_scheduled' && item.isCompulsory && (
+          <View style={styles.compulsoryBadge}>
+            <Text style={styles.compulsoryBadgeText}>Compulsory</Text>
+          </View>
+        )}
         {isDone && item.completedByName && (
           <Text style={styles.cardCarerName}>
             {item.type === 'activity' ? 'Done' : 'Given'} by {item.completedByName}
@@ -363,7 +369,7 @@ export default function TodayScreen() {
               <TaskCard
                 key={item.key}
                 item={item}
-                variant="overdue"
+                variant={item.isCompulsory ? 'overdue' : 'supplement'}
                 onRecord={handleItemTap}
                 onSkip={handleSkip}
                 onQuickDone={handleQuickDoneNutrition}
@@ -561,6 +567,11 @@ const styles = StyleSheet.create({
     borderLeftColor: '#dc2626',
     backgroundColor: '#fff',
   },
+  cardSupplement: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#d97706',
+    backgroundColor: '#fff',
+  },
   cardDone: { opacity: 0.7 },
   cardPressed: { opacity: 0.85 },
   cardBody: { flex: 1, minWidth: 0 },
@@ -568,6 +579,15 @@ const styles = StyleSheet.create({
   cardNameDone: { color: '#6b7280' },
   cardTime: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
   cardCarerName: { fontSize: 11, color: '#16a34a', marginTop: 2 },
+  compulsoryBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fee2e2',
+    borderRadius: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginTop: 4,
+  },
+  compulsoryBadgeText: { fontSize: 11, fontWeight: '600', color: '#dc2626' },
 
   typeIcon: {
     width: 32,
