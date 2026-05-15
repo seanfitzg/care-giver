@@ -32,7 +32,6 @@ const EVENT_CONFIG: Record<CareLogEntry['event_type'], EventConfig> = {
   as_needed_medication: { icon: 'flask-outline', color: '#7c3aed', bg: '#f5f3ff', label: 'PRN' },
   nutrition: { icon: 'water-outline', color: '#d97706', bg: '#fffbeb', label: 'Nutrition' },
   activity: { icon: 'walk-outline', color: '#16a34a', bg: '#f0fdf4', label: 'Activity' },
-  missed: { icon: 'alert-circle-outline', color: '#dc2626', bg: '#fef2f2', label: 'Missed' },
 };
 
 const STATUS_BADGE: Record<CareLogEntry['status'], { label: string; color: string; bg: string }> = {
@@ -91,7 +90,7 @@ function LogCard({
   wide: boolean;
   onPress: (entry: CareLogEntry) => void;
 }) {
-  const cfg = EVENT_CONFIG[entry.event_type] ?? EVENT_CONFIG.missed;
+  const cfg = EVENT_CONFIG[entry.event_type];
   const statusBadge = STATUS_BADGE[entry.status];
   const carerName = entry.carer_id ? carerNames[entry.carer_id] : null;
   const isPRN = entry.event_type === 'as_needed_medication';
@@ -314,7 +313,7 @@ export default function LogScreen() {
             <View style={styles.detailHandle} />
             {selectedEntry &&
               (() => {
-                const cfg = EVENT_CONFIG[selectedEntry.event_type] ?? EVENT_CONFIG.missed;
+                const cfg = EVENT_CONFIG[selectedEntry.event_type];
                 const statusBadge = STATUS_BADGE[selectedEntry.status];
                 const carerName = selectedEntry.carer_id
                   ? carerNames[selectedEntry.carer_id]

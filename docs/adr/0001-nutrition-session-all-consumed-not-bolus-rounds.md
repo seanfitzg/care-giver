@@ -1,0 +1,3 @@
+# Nutrition session tracks all_consumed (boolean) not bolus_rounds_completed (integer)
+
+The original design recorded `bolus_rounds_completed` as an integer so clinicians could see how many rounds were delivered. In practice, asking carers to tap-to-increment through each bolus round was too disruptive mid-session. We replaced it with a nullable boolean `all_consumed`: `true` = fully consumed, `false` = not fully consumed, `null` = not recorded (used for bulk catch-up sessions where the carer was not tracking in real time). This captures the clinically meaningful outcome without requiring step-by-step tracking.

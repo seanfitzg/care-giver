@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export type CareLogEntry = {
   id: string;
-  event_type: 'medication_scheduled' | 'as_needed_medication' | 'nutrition' | 'activity' | 'missed';
+  event_type: 'medication_scheduled' | 'as_needed_medication' | 'nutrition' | 'activity';
   occurred_at: string;
   status: 'completed' | 'missed' | 'skipped';
   notes: string | null;

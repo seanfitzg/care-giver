@@ -22,8 +22,8 @@ Use the docs\care-giver-prototype.html wireframe as a guide to the UI.
 
 ```
 app/               Expo Router screens
-  (tabs)/          Bottom-tab navigator (Today, Feed, On Duty, Log)
-contexts/          React Context providers (Auth, Duty)
+  (tabs)/          Bottom-tab navigator (Today, Schedule, Log)
+contexts/          React Context providers (Auth)
 lib/               Shared utilities (supabase client)
 supabase/
   migrations/      Database migrations (run in order)

@@ -37,7 +37,7 @@ export function useBulkCatchUp() {
           carer_id: carerId,
           started_at: item.scheduledAt.toISOString(),
           completed_at: item.scheduledAt.toISOString(),
-          all_consumed: false,
+          all_consumed: null,
           bulk_confirmed: true,
           notes: notes || null,
         });
