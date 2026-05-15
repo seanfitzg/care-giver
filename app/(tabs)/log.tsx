@@ -90,7 +90,7 @@ function LogCard({
   wide: boolean;
   onPress: (entry: CareLogEntry) => void;
 }) {
-  const cfg = EVENT_CONFIG[entry.event_type] ?? EVENT_CONFIG.missed;
+  const cfg = EVENT_CONFIG[entry.event_type];
   const statusBadge = STATUS_BADGE[entry.status];
   const carerName = entry.carer_id ? carerNames[entry.carer_id] : null;
   const isPRN = entry.event_type === 'as_needed_medication';
