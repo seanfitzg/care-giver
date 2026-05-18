@@ -30,6 +30,7 @@ type ScheduledItemRow = {
   is_compulsory: boolean;
   bolus_rest_minutes: number | null;
   nutrition_type: NutritionType | null;
+  days_of_week: number[] | null;
 };
 
 type EventLogRow = {
@@ -160,6 +161,7 @@ export function buildTimelineItems(
 
 async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
   const { start, end } = todayBounds();
+  const todayDow = new Date().getDay();
   const [
     { data: items, error: itemsErr },
     { data: events, error: eventsErr },
@@ -168,9 +170,10 @@ async function fetchData(careRecipientId: string): Promise<FetchedTimeline> {
     supabase
       .from('scheduled_items')
       .select(
-        'id, type, name, description, time_of_day, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type',
+        'id, type, name, description, time_of_day, overdue_window_minutes, is_compulsory, bolus_rest_minutes, nutrition_type, days_of_week',
       )
-      .eq('care_recipient_id', careRecipientId),
+      .eq('care_recipient_id', careRecipientId)
+      .or(`days_of_week.is.null,days_of_week.cs.{${todayDow}}`),
     supabase
       .from('event_log')
       .select('id, scheduled_item_id, occurred_at, status, carer_id')

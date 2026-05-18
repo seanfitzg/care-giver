@@ -38,6 +38,7 @@ type ScheduledItem = {
   bolus_rest_minutes: number | null;
   nutrition_type: NutritionType | null;
   duration_minutes: number | null;
+  days_of_week: number[] | null;
 };
 
 type Occurrence = ScheduledItem & {
@@ -56,6 +57,7 @@ type ItemForm = {
   overdue_window_minutes: string;
   is_compulsory: boolean;
   duration_minutes: string;
+  days_of_week: number[] | null;
 };
 
 const TYPE_CONFIG: Record<
@@ -80,6 +82,9 @@ const TYPE_LABELS: Record<ItemType, string> = {
   nutrition: 'Nutrition',
   activity: 'Activity',
 };
+
+const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_ABBRS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function expandOccurrences(items: ScheduledItem[]): Occurrence[] {
   const result: Occurrence[] = [];
@@ -131,6 +136,7 @@ function blankItemForm(type: ItemType): ItemForm {
     overdue_window_minutes: '60',
     is_compulsory: true,
     duration_minutes: '30',
+    days_of_week: null,
   };
 }
 
@@ -146,6 +152,7 @@ function itemFormFromItem(item: ScheduledItem): ItemForm {
     overdue_window_minutes: String(item.overdue_window_minutes),
     is_compulsory: item.is_compulsory,
     duration_minutes: String(item.duration_minutes ?? 30),
+    days_of_week: item.days_of_week ?? null,
   };
 }
 
@@ -164,7 +171,7 @@ export default function ScheduleScreen() {
       const { data, error } = await supabase
         .from('scheduled_items')
         .select(
-          'id,type,name,description,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes',
+          'id,type,name,description,time_of_day,overdue_window_minutes,is_compulsory,bolus_rest_minutes,nutrition_type,duration_minutes,days_of_week',
         )
         .eq('care_recipient_id', careRecipientId!)
         .order('time_of_day', { ascending: true });
@@ -177,6 +184,8 @@ export default function ScheduleScreen() {
   const saveItemMutation = useMutation({
     mutationFn: async (form: ItemForm) => {
       if (!form.name.trim()) throw new Error('Name is required.');
+      if (form.days_of_week !== null && form.days_of_week.length === 0)
+        throw new Error('Select at least one day.');
       const overdue = parseInt(form.overdue_window_minutes, 10);
       if (!overdue || overdue < 1) throw new Error('Overdue window must be a positive number.');
 
@@ -187,6 +196,7 @@ export default function ScheduleScreen() {
         description: form.description.trim() || null,
         overdue_window_minutes: overdue,
         is_compulsory: form.is_compulsory,
+        days_of_week: form.days_of_week,
       };
 
       if (form.type === 'nutrition') {
@@ -410,7 +420,7 @@ function OccurrenceRow({
             {occurrence.description}
           </Text>
         ) : null}
-        {(detail || showCompulsory) && (
+        {(detail || showCompulsory || occurrence.days_of_week) && (
           <View style={s.badgeRow}>
             {detail && (
               <View style={[s.badge, { backgroundColor: cfg.bg }]}>
@@ -422,6 +432,12 @@ function OccurrenceRow({
                 <Text style={s.compulsoryText}>Compulsory</Text>
               </View>
             )}
+            {occurrence.days_of_week &&
+              occurrence.days_of_week.map((d) => (
+                <View key={d} style={s.dowChip}>
+                  <Text style={s.dowChipText}>{DAY_ABBRS[d]}</Text>
+                </View>
+              ))}
           </View>
         )}
       </View>
@@ -559,6 +575,9 @@ function ScheduledItemModal({
         </>
       )}
 
+      <FieldLabel>Days of week</FieldLabel>
+      <DayOfWeekPicker value={form.days_of_week} onChange={(v) => set({ days_of_week: v })} />
+
       <FieldLabel>Mark missed after (minutes)</FieldLabel>
       <TextInput
         style={s.input}
@@ -587,6 +606,44 @@ function ScheduledItemModal({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <Text style={s.fieldLabel}>{children}</Text>;
+}
+
+function DayOfWeekPicker({
+  value,
+  onChange,
+}: {
+  value: number[] | null;
+  onChange: (v: number[] | null) => void;
+}) {
+  const isAll = value === null;
+  const activeDays = isAll ? [0, 1, 2, 3, 4, 5, 6] : value;
+
+  function toggleDay(day: number) {
+    const next = activeDays.includes(day)
+      ? activeDays.filter((d) => d !== day)
+      : [...activeDays, day].sort((a, b) => a - b);
+    onChange(next.length === 7 ? null : next);
+  }
+
+  return (
+    <View style={s.dowRow}>
+      <Pressable style={[s.dowBtn, isAll && s.dowBtnSelected]} onPress={() => onChange(null)}>
+        <Text style={[s.dowBtnText, isAll && s.dowBtnTextSelected]}>All</Text>
+      </Pressable>
+      {DAY_LETTERS.map((letter, day) => {
+        const active = activeDays.includes(day);
+        return (
+          <Pressable
+            key={day}
+            style={[s.dowDay, active && s.dowDaySelected]}
+            onPress={() => toggleDay(day)}
+          >
+            <Text style={[s.dowDayText, active && s.dowDayTextSelected]}>{letter}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
 }
 
 const s = StyleSheet.create({
@@ -770,4 +827,48 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   saveText: { fontSize: 15, color: '#fff', fontWeight: '600' },
+
+  dowRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  dowBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#fff',
+  },
+  dowBtnSelected: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  dowBtnText: { fontSize: 13, color: '#374151', fontWeight: '500' },
+  dowBtnTextSelected: { color: '#2563eb', fontWeight: '700' },
+  dowDay: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dowDaySelected: {
+    borderColor: '#2563eb',
+    backgroundColor: '#2563eb',
+  },
+  dowDayText: { fontSize: 12, color: '#374151', fontWeight: '500' },
+  dowDayTextSelected: { color: '#fff', fontWeight: '700' },
+  dowChip: {
+    backgroundColor: '#e0e7ff',
+    borderRadius: 4,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+  },
+  dowChipText: { fontSize: 10, fontWeight: '600', color: '#4338ca' },
 });
