@@ -1,6 +1,13 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const REDIRECT_TO = 'caregiver://setup';
+const NATIVE_REDIRECT = 'caregiver://setup';
+
+function buildAllowlist(): string[] {
+  const allowlist = [NATIVE_REDIRECT];
+  const webOrigin = Deno.env.get('INVITE_WEB_ORIGIN');
+  if (webOrigin) allowlist.push(webOrigin);
+  return allowlist;
+}
 
 export async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
@@ -17,10 +24,11 @@ export async function handler(req: Request): Promise<Response> {
     return json({ error: 'Missing Authorization header' }, 401);
   }
 
-  const { email, role, care_recipient_id } = (await req.json()) as {
+  const { email, role, care_recipient_id, redirect_to } = (await req.json()) as {
     email: string;
     role: 'senior_carer' | 'carer';
     care_recipient_id: string;
+    redirect_to?: string;
   };
 
   if (!email || !role || !care_recipient_id) {
@@ -28,6 +36,13 @@ export async function handler(req: Request): Promise<Response> {
   }
   if (!['senior_carer', 'carer'].includes(role)) {
     return json({ error: 'role must be senior_carer or carer' }, 400);
+  }
+
+  const allowlist = buildAllowlist();
+  const redirectTo = redirect_to ?? NATIVE_REDIRECT;
+
+  if (!allowlist.includes(redirectTo)) {
+    return json({ error: 'redirect_to is not on the allowlist' }, 400);
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -53,7 +68,7 @@ export async function handler(req: Request): Promise<Response> {
   // Send the invite email via Supabase Auth admin API.
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
     email,
-    { redirectTo: REDIRECT_TO },
+    { redirectTo },
   );
 
   if (inviteError) {
