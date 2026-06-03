@@ -1,6 +1,6 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const REDIRECT_TO = 'caregiver://setup';
+const DEFAULT_REDIRECT_TO = 'caregiver://setup';
 
 export async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
@@ -17,10 +17,11 @@ export async function handler(req: Request): Promise<Response> {
     return json({ error: 'Missing Authorization header' }, 401);
   }
 
-  const { email, role, care_recipient_id } = (await req.json()) as {
+  const { email, role, care_recipient_id, redirect_to } = (await req.json()) as {
     email: string;
     role: 'senior_carer' | 'carer';
     care_recipient_id: string;
+    redirect_to?: string;
   };
 
   if (!email || !role || !care_recipient_id) {
@@ -53,7 +54,7 @@ export async function handler(req: Request): Promise<Response> {
   // Send the invite email via Supabase Auth admin API.
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
     email,
-    { redirectTo: REDIRECT_TO },
+    { redirectTo: redirect_to ?? DEFAULT_REDIRECT_TO },
   );
 
   if (inviteError) {
