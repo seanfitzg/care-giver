@@ -1,6 +1,13 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const DEFAULT_REDIRECT_TO = 'caregiver://setup';
+const NATIVE_REDIRECT = 'caregiver://setup';
+
+function buildAllowlist(): string[] {
+  const allowlist = [NATIVE_REDIRECT];
+  const webOrigin = Deno.env.get('INVITE_WEB_ORIGIN');
+  if (webOrigin) allowlist.push(webOrigin);
+  return allowlist;
+}
 
 export async function handler(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') {
@@ -31,6 +38,13 @@ export async function handler(req: Request): Promise<Response> {
     return json({ error: 'role must be senior_carer or carer' }, 400);
   }
 
+  const allowlist = buildAllowlist();
+  const redirectTo = redirect_to ?? NATIVE_REDIRECT;
+
+  if (!allowlist.includes(redirectTo)) {
+    return json({ error: 'redirect_to is not on the allowlist' }, 400);
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
@@ -54,7 +68,7 @@ export async function handler(req: Request): Promise<Response> {
   // Send the invite email via Supabase Auth admin API.
   const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
     email,
-    { redirectTo: redirect_to ?? DEFAULT_REDIRECT_TO },
+    { redirectTo },
   );
 
   if (inviteError) {
