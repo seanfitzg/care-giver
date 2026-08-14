@@ -3,31 +3,17 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-
-interface ScheduledItem {
-  id: string;
-  type: 'medication_scheduled' | 'nutrition' | 'activity';
-  name: string;
-  time_of_day: string;
-  overdue_window_minutes: number;
-  days_of_week: number[] | null;
-}
-
-interface EventEntry {
-  id: string;
-  scheduled_item_id: string | null;
-  carer_id: string | null;
-  occurred_at: string;
-  status: 'completed' | 'missed' | 'skipped';
-  event_type: 'medication_scheduled' | 'as_needed_medication' | 'nutrition' | 'activity';
-}
-
-interface CarerName {
-  user_id: string;
-  display_name: string;
-}
-
-type ItemStatus = 'pending' | 'overdue' | 'completed' | 'missed' | 'skipped';
+import PRNMedicationModal from './PRNMedicationModal';
+import RecordItemModal from './RecordItemModal';
+import {
+  formatTimeOfDay,
+  typeLabel,
+  type CarerName,
+  type EventEntry,
+  type ItemStatus,
+  type PRNMedication,
+  type ScheduledItem,
+} from './types';
 
 interface TimelineItem {
   scheduledItem: ScheduledItem;
@@ -37,12 +23,18 @@ interface TimelineItem {
 
 interface Props {
   careRecipientId: string;
+  carerId: string;
   scheduledItems: ScheduledItem[];
   initialEvents: EventEntry[];
   carerNames: CarerName[];
+  asNeededMedications: PRNMedication[];
   serverTimeISO: string;
   todayLabel: string;
 }
+
+// Only these item types support click-to-record from the timeline; nutrition
+// sessions are recorded through the guided session flow.
+const RECORDABLE_TYPES: ScheduledItem['type'][] = ['medication_scheduled', 'activity'];
 
 const STATUS_SORT: Record<ItemStatus, number> = {
   overdue: 0,
@@ -106,22 +98,11 @@ function computeStatus(item: ScheduledItem, event: EventEntry | null, now: Date)
   return item.time_of_day <= utcTime ? 'overdue' : 'pending';
 }
 
-function formatTimeOfDay(timeStr: string): string {
-  const [h, m] = timeStr.split(':');
-  return `${h}:${m}`;
-}
-
 function formatOccurredAt(iso: string): string {
   const d = new Date(iso);
   return (
     String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0')
   );
-}
-
-function typeLabel(type: string): string {
-  if (type === 'medication_scheduled') return 'Medication';
-  if (type === 'nutrition') return 'Nutrition';
-  return 'Activity';
 }
 
 function statusLabel(status: ItemStatus): string {
@@ -134,16 +115,27 @@ function statusLabel(status: ItemStatus): string {
 
 export default function TodayTimeline({
   careRecipientId,
+  carerId,
   scheduledItems,
   initialEvents,
   carerNames,
+  asNeededMedications,
   serverTimeISO,
   todayLabel,
 }: Props) {
   const router = useRouter();
   const [events, setEvents] = useState<EventEntry[]>(initialEvents);
+  const [activeItem, setActiveItem] = useState<ScheduledItem | null>(null);
+  const [prnModalOpen, setPrnModalOpen] = useState(false);
   // Initialise from the server timestamp so server and client render identically.
   const [now, setNow] = useState(() => new Date(serverTimeISO));
+
+  function handleRecorded(event: EventEntry) {
+    setEvents((prev) => {
+      if (prev.some((e) => e.id === event.id)) return prev;
+      return [...prev, event];
+    });
+  }
 
   useEffect(() => {
     const tick = () => setNow(new Date());
@@ -244,32 +236,53 @@ export default function TodayTimeline({
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>Today</h1>
           <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{todayLabel}</p>
         </div>
-        {overduCount > 0 && (
-          <div
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {overduCount > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: '#fee2e2',
+                color: '#dc2626',
+                fontSize: 12.5,
+                fontWeight: 600,
+                padding: '5px 12px',
+                borderRadius: 20,
+              }}
+            >
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: '#dc2626',
+                }}
+              />
+              {overduCount} overdue
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() => setPrnModalOpen(true)}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 6,
-              background: '#fee2e2',
-              color: '#dc2626',
+              background: '#7c3aed',
+              color: '#fff',
               fontSize: 12.5,
               fontWeight: 600,
-              padding: '5px 12px',
+              padding: '7px 14px',
               borderRadius: 20,
+              border: 'none',
+              cursor: 'pointer',
             }}
           >
-            <span
-              style={{
-                display: 'inline-block',
-                width: 7,
-                height: 7,
-                borderRadius: '50%',
-                background: '#dc2626',
-              }}
-            />
-            {overduCount} overdue
-          </div>
-        )}
+            As-needed medication
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -293,10 +306,26 @@ export default function TodayTimeline({
           {items.map(({ scheduledItem: item, event, status }) => {
             const colors = STATUS_COLORS[status];
             const carer = event?.carer_id ? carerMap.get(event.carer_id) : null;
+            const recordable =
+              (status === 'pending' || status === 'overdue') &&
+              RECORDABLE_TYPES.includes(item.type);
 
             return (
               <div
                 key={item.id}
+                role={recordable ? 'button' : undefined}
+                tabIndex={recordable ? 0 : undefined}
+                onClick={recordable ? () => setActiveItem(item) : undefined}
+                onKeyDown={
+                  recordable
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setActiveItem(item);
+                        }
+                      }
+                    : undefined
+                }
                 style={{
                   background: colors.bg,
                   border: '1px solid #e5e7eb',
@@ -306,6 +335,7 @@ export default function TodayTimeline({
                   display: 'flex',
                   alignItems: 'flex-start',
                   gap: 16,
+                  cursor: recordable ? 'pointer' : 'default',
                 }}
               >
                 <div style={{ flexShrink: 0, minWidth: 50, paddingTop: 2 }}>
@@ -371,6 +401,26 @@ export default function TodayTimeline({
             );
           })}
         </div>
+      )}
+
+      {activeItem && (
+        <RecordItemModal
+          item={activeItem}
+          careRecipientId={careRecipientId}
+          carerId={carerId}
+          onClose={() => setActiveItem(null)}
+          onRecorded={handleRecorded}
+        />
+      )}
+
+      {prnModalOpen && (
+        <PRNMedicationModal
+          medications={asNeededMedications}
+          careRecipientId={careRecipientId}
+          carerId={carerId}
+          onClose={() => setPrnModalOpen(false)}
+          onRecorded={handleRecorded}
+        />
       )}
     </div>
   );

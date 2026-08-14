@@ -33,7 +33,7 @@ export default async function HomePage() {
   );
   const tomorrowUTCStart = new Date(todayUTCStart.getTime() + 86_400_000);
 
-  const [itemsResult, eventsResult, carerNamesResult] = await Promise.all([
+  const [itemsResult, eventsResult, carerNamesResult, prnMedicationsResult] = await Promise.all([
     supabase
       .from('scheduled_items')
       .select('id, type, name, time_of_day, overdue_window_minutes, days_of_week')
@@ -49,6 +49,12 @@ export default async function HomePage() {
       .lt('occurred_at', tomorrowUTCStart.toISOString()),
 
     supabase.rpc('get_carer_names', { p_care_recipient_id: careRecipientId }),
+
+    supabase
+      .from('as_needed_medications')
+      .select('id, name, notes')
+      .eq('care_recipient_id', careRecipientId)
+      .order('name', { ascending: true }),
   ]);
 
   const scheduledItems = (itemsResult.data ?? []).filter(
@@ -65,9 +71,11 @@ export default async function HomePage() {
   return (
     <TodayTimeline
       careRecipientId={careRecipientId}
+      carerId={user.id}
       scheduledItems={scheduledItems}
       initialEvents={eventsResult.data ?? []}
       carerNames={carerNamesResult.data ?? []}
+      asNeededMedications={prnMedicationsResult.data ?? []}
       serverTimeISO={now.toISOString()}
       todayLabel={todayLabel}
     />
