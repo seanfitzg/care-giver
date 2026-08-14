@@ -32,10 +32,6 @@ interface Props {
   todayLabel: string;
 }
 
-// Only these item types support click-to-record from the timeline; nutrition
-// sessions are recorded through the guided session flow.
-const RECORDABLE_TYPES: ScheduledItem['type'][] = ['medication_scheduled', 'activity'];
-
 const STATUS_SORT: Record<ItemStatus, number> = {
   overdue: 0,
   pending: 1,
@@ -306,22 +302,28 @@ export default function TodayTimeline({
           {items.map(({ scheduledItem: item, event, status }) => {
             const colors = STATUS_COLORS[status];
             const carer = event?.carer_id ? carerMap.get(event.carer_id) : null;
-            const recordable =
-              (status === 'pending' || status === 'overdue') &&
-              RECORDABLE_TYPES.includes(item.type);
+            const recordable = status === 'pending' || status === 'overdue';
+
+            function handleActivate() {
+              if (item.type === 'nutrition') {
+                router.push(`/session/nutrition/${item.id}`);
+              } else {
+                setActiveItem(item);
+              }
+            }
 
             return (
               <div
                 key={item.id}
                 role={recordable ? 'button' : undefined}
                 tabIndex={recordable ? 0 : undefined}
-                onClick={recordable ? () => setActiveItem(item) : undefined}
+                onClick={recordable ? handleActivate : undefined}
                 onKeyDown={
                   recordable
                     ? (e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setActiveItem(item);
+                          handleActivate();
                         }
                       }
                     : undefined

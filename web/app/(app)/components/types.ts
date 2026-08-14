@@ -1,3 +1,5 @@
+export type NutritionType = 'bolus' | 'oral_self' | 'oral_carer';
+
 export interface ScheduledItem {
   id: string;
   type: 'medication_scheduled' | 'nutrition' | 'activity';
@@ -5,6 +7,23 @@ export interface ScheduledItem {
   time_of_day: string;
   overdue_window_minutes: number;
   days_of_week: number[] | null;
+  description: string | null;
+  nutrition_type: NutritionType | null;
+  bolus_rest_minutes: number | null;
+}
+
+export interface NutritionSession {
+  id: string;
+  care_recipient_id: string;
+  scheduled_item_id: string | null;
+  carer_id: string;
+  started_at: string;
+  completed_at: string | null;
+  all_consumed: boolean | null;
+  notes: string | null;
+  bolus_rest_minutes: number | null;
+  bolus_rounds_completed: number | null;
+  rest_started_at: string | null;
 }
 
 export interface EventEntry {
