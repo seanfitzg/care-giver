@@ -37,3 +37,25 @@ export const textareaStyle: CSSProperties = {
   fontFamily: 'inherit',
   resize: 'vertical',
 };
+
+export const inputStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  marginTop: 6,
+  padding: '8px 10px',
+  borderRadius: 8,
+  border: '1px solid #d1d5db',
+  fontSize: 14,
+  fontFamily: 'inherit',
+  boxSizing: 'border-box',
+};
+
+export const selectStyle: CSSProperties = { ...inputStyle };
+
+export const fieldLabelStyle: CSSProperties = {
+  display: 'block',
+  fontSize: 13,
+  fontWeight: 500,
+  color: '#374151',
+  marginBottom: 14,
+};
