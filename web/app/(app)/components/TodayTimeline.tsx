@@ -146,9 +146,13 @@ export default function TodayTimeline({
   const [now, setNow] = useState(() => new Date(serverTimeISO));
 
   useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(id);
+    const tick = () => setNow(new Date());
+    const correctionId = setTimeout(tick, 0);
+    const intervalId = setInterval(tick, 30_000);
+    return () => {
+      clearTimeout(correctionId);
+      clearInterval(intervalId);
+    };
   }, []);
 
   // Refresh server data when the UTC date rolls over midnight so scheduled
