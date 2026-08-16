@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import BulkCatchUpModal from './BulkCatchUpModal';
@@ -127,6 +127,7 @@ export default function TodayTimeline({
   const [prnModalOpen, setPrnModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement>(null);
   // Initialise from the server timestamp so server and client render identically.
   const [now, setNow] = useState(() => new Date(serverTimeISO));
 
@@ -232,14 +233,25 @@ export default function TodayTimeline({
     return a.scheduledItem.time_of_day.localeCompare(b.scheduledItem.time_of_day);
   });
 
-  const overduCount = items.filter((i) => i.status === 'overdue').length;
+  const overdueItems = items.filter((i) => i.status === 'overdue').map((i) => i.scheduledItem);
+  const overduCount = overdueItems.length;
 
   // Deriving from `items` (rather than trusting selectedIds directly) drops
   // stale selections for items that stopped being overdue, e.g. recorded
   // elsewhere and picked up via the realtime subscription.
-  const selectedOverdueItems = items
-    .filter((i) => i.status === 'overdue' && selectedIds.has(i.scheduledItem.id))
-    .map((i) => i.scheduledItem);
+  const selectedOverdueItems = overdueItems.filter((item) => selectedIds.has(item.id));
+  const allOverdueSelected =
+    overdueItems.length > 0 && selectedOverdueItems.length === overdueItems.length;
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = selectedOverdueItems.length > 0 && !allOverdueSelected;
+    }
+  }, [selectedOverdueItems.length, allOverdueSelected]);
+
+  function toggleSelectAll() {
+    setSelectedIds(allOverdueSelected ? new Set() : new Set(overdueItems.map((item) => item.id)));
+  }
 
   return (
     <div
@@ -312,7 +324,7 @@ export default function TodayTimeline({
         </div>
       </div>
 
-      {selectedOverdueItems.length > 0 && (
+      {overduCount > 0 && (
         <div
           style={{
             display: 'flex',
@@ -327,25 +339,49 @@ export default function TodayTimeline({
             marginBottom: 12,
           }}
         >
-          <span style={{ fontSize: 13.5, fontWeight: 600, color: '#4338ca' }}>
-            {selectedOverdueItems.length} selected
-          </span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              style={{ ...secondaryBtnStyle, flex: 'none', padding: '7px 14px' }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={() => setBulkModalOpen(true)}
-              style={{ ...primaryBtnStyle('#4338ca'), flex: 'none', padding: '7px 14px' }}
-            >
-              Mark all selected as complete
-            </button>
-          </div>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              fontSize: 13.5,
+              fontWeight: 600,
+              color: '#4338ca',
+            }}
+          >
+            <input
+              ref={selectAllRef}
+              type="checkbox"
+              checked={allOverdueSelected}
+              onChange={toggleSelectAll}
+              aria-label={
+                allOverdueSelected ? 'Deselect all overdue items' : 'Select all overdue items'
+              }
+              style={{ width: 16, height: 16, cursor: 'pointer' }}
+            />
+            {selectedOverdueItems.length > 0
+              ? `${selectedOverdueItems.length} selected`
+              : 'Select all overdue'}
+          </label>
+          {selectedOverdueItems.length > 0 && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                style={{ ...secondaryBtnStyle, flex: 'none', padding: '7px 14px' }}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setBulkModalOpen(true)}
+                style={{ ...primaryBtnStyle('#4338ca'), flex: 'none', padding: '7px 14px' }}
+              >
+                Mark all selected as complete
+              </button>
+            </div>
+          )}
         </div>
       )}
 
