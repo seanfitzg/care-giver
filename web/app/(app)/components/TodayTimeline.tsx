@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import BulkCatchUpModal from './BulkCatchUpModal';
+import { primaryBtnStyle, secondaryBtnStyle } from './modalStyles';
 import PRNMedicationModal from './PRNMedicationModal';
 import RecordItemModal from './RecordItemModal';
 import {
@@ -123,6 +125,8 @@ export default function TodayTimeline({
   const [events, setEvents] = useState<EventEntry[]>(initialEvents);
   const [activeItem, setActiveItem] = useState<ScheduledItem | null>(null);
   const [prnModalOpen, setPrnModalOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkModalOpen, setBulkModalOpen] = useState(false);
   // Initialise from the server timestamp so server and client render identically.
   const [now, setNow] = useState(() => new Date(serverTimeISO));
 
@@ -130,6 +134,26 @@ export default function TodayTimeline({
     setEvents((prev) => {
       if (prev.some((e) => e.id === event.id)) return prev;
       return [...prev, event];
+    });
+  }
+
+  function handleBulkRecorded(newEvents: EventEntry[]) {
+    setEvents((prev) => {
+      const existingIds = new Set(prev.map((e) => e.id));
+      return [...prev, ...newEvents.filter((e) => !existingIds.has(e.id))];
+    });
+    setSelectedIds(new Set());
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
     });
   }
 
@@ -210,6 +234,13 @@ export default function TodayTimeline({
 
   const overduCount = items.filter((i) => i.status === 'overdue').length;
 
+  // Deriving from `items` (rather than trusting selectedIds directly) drops
+  // stale selections for items that stopped being overdue, e.g. recorded
+  // elsewhere and picked up via the realtime subscription.
+  const selectedOverdueItems = items
+    .filter((i) => i.status === 'overdue' && selectedIds.has(i.scheduledItem.id))
+    .map((i) => i.scheduledItem);
+
   return (
     <div
       style={{
@@ -281,6 +312,43 @@ export default function TodayTimeline({
         </div>
       </div>
 
+      {selectedOverdueItems.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+            background: '#eef2ff',
+            border: '1px solid #c7d2fe',
+            borderRadius: 10,
+            padding: '10px 16px',
+            marginBottom: 12,
+          }}
+        >
+          <span style={{ fontSize: 13.5, fontWeight: 600, color: '#4338ca' }}>
+            {selectedOverdueItems.length} selected
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setSelectedIds(new Set())}
+              style={{ ...secondaryBtnStyle, flex: 'none', padding: '7px 14px' }}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              onClick={() => setBulkModalOpen(true)}
+              style={{ ...primaryBtnStyle('#4338ca'), flex: 'none', padding: '7px 14px' }}
+            >
+              Mark all selected as complete
+            </button>
+          </div>
+        </div>
+      )}
+
       {items.length === 0 ? (
         <div
           style={{
@@ -340,6 +408,23 @@ export default function TodayTimeline({
                   cursor: recordable ? 'pointer' : 'default',
                 }}
               >
+                {status === 'overdue' ? (
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    style={{ flexShrink: 0, paddingTop: 4 }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => toggleSelected(item.id)}
+                      aria-label={`Select ${item.name} for bulk catch-up`}
+                      style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ flexShrink: 0, width: 16 }} />
+                )}
                 <div style={{ flexShrink: 0, minWidth: 50, paddingTop: 2 }}>
                   <div style={{ fontSize: 13.5, fontWeight: 600, color: '#374151' }}>
                     {formatTimeOfDay(item.time_of_day)}
@@ -422,6 +507,16 @@ export default function TodayTimeline({
           carerId={carerId}
           onClose={() => setPrnModalOpen(false)}
           onRecorded={handleRecorded}
+        />
+      )}
+
+      {bulkModalOpen && selectedOverdueItems.length > 0 && (
+        <BulkCatchUpModal
+          items={selectedOverdueItems}
+          careRecipientId={careRecipientId}
+          carerId={carerId}
+          onClose={() => setBulkModalOpen(false)}
+          onRecorded={handleBulkRecorded}
         />
       )}
     </div>
