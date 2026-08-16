@@ -30,6 +30,10 @@ supabase/
   seed.sql         Dev seed data
 ```
 
+## Environment Variables
+
+- This is a monorepo with BOTH a Next.js web app (`web/`) and an Expo app (root). Web app env vars MUST be prefixed `NEXT_PUBLIC_`; Expo app vars MUST be prefixed `EXPO_PUBLIC_`. Never copy a var between apps without renaming the prefix.
+
 ## Local dev
 
 ```bash
@@ -68,6 +72,7 @@ When asked for recommendations, research, ideas, or design discussions, save the
 - Always include `--linked` flag for remote operations (seed, push, query).
 - Run `npx supabase db push` BEFORE seeding when new migrations exist.
 - For edge function tests, invoke Deno directly — the `supabase functions test` subcommand has been removed.
+- Creating a migration file is NOT done. After writing any file in `supabase/migrations/`, run `supabase link --project-ref <ref>` (if not linked) then `supabase db push`, and confirm the columns exist before opening a PR.
 
 ## Implementation Workflow
 
@@ -78,3 +83,11 @@ When the user says 'implement issue #N', start implementing immediately after a 
 - This is a Windows machine; default to PowerShell syntax (`$env:VAR="value"`), not bash `export`.
 - For Expo Web, avoid `Alert.alert` for confirmations — it is silently swallowed. Use a Modal-based confirmation instead.
 - For Android dev builds, never use `127.0.0.1` or `localhost` in `.env` — use the host machine's LAN IP.
+
+## Git & PR Workflow
+
+- Use `gh pr create --title "..." --body-file /tmp/pr-body.md`. Never pass `--body` and `--body-file` together (it hangs on stdin). Verify `gh auth status` before starting any issue work.
+
+## Definition of Done
+
+- Every feature must pass: `npm run type-check`, `npm run lint`, `npm run build`. State explicitly in the PR body which verification steps were NOT possible (e.g. local Supabase, browser testing) rather than implying full verification.
