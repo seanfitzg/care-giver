@@ -80,7 +80,7 @@ When the user says 'implement issue #N', start implementing immediately after a 
 
 ## Platform Conventions
 
-- This is a Windows machine; default to PowerShell syntax (`$env:VAR="value"`), not bash `export`.
+- The user works across multiple machines (Windows and Mac) and this changes over time — do NOT assume a fixed OS. Check the `Platform:` field in the environment info at the start of each session and use matching shell syntax: PowerShell (`$env:VAR="value"`) on Windows (`win32`), bash/zsh `export` on Mac/Linux (`darwin`/`linux`).
 - For Expo Web, avoid `Alert.alert` for confirmations — it is silently swallowed. Use a Modal-based confirmation instead.
 - For Android dev builds, never use `127.0.0.1` or `localhost` in `.env` — use the host machine's LAN IP.
 
