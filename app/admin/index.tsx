@@ -11,8 +11,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { PRNMedicationFormModal } from '@/components/PRNMedicationFormModal';
+import { useAddPRNMedication } from '@/hooks/useAddPRNMedication';
+import { usePRNMedications, type PRNMedication } from '@/hooks/usePRNMedications';
+import { useUpdatePRNMedication } from '@/hooks/useUpdatePRNMedication';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+
+type AdminTab = 'carers' | 'medications';
 
 type UserRole = 'senior_carer' | 'carer';
 
@@ -34,15 +40,23 @@ async function fetchCarers(careRecipientId: string): Promise<CarerRow[]> {
 export default function AdminScreen() {
   const { careRecipientId, user } = useAuth();
   const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<AdminTab>('carers');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<UserRole>('carer');
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [medModalOpen, setMedModalOpen] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<PRNMedication | null>(null);
 
   const { data: carers, isLoading } = useQuery({
     queryKey: ['carers', careRecipientId],
     queryFn: () => fetchCarers(careRecipientId!),
     enabled: !!careRecipientId,
   });
+
+  const { data: medications, isLoading: isMedLoading } = usePRNMedications(careRecipientId);
+  const addMedMutation = useAddPRNMedication();
+  const updateMedMutation = useUpdatePRNMedication();
+  const isSavingMedication = addMedMutation.isPending || updateMedMutation.isPending;
 
   const inviteMutation = useMutation({
     mutationFn: async ({ email, role }: { email: string; role: UserRole }) => {
@@ -127,6 +141,36 @@ export default function AdminScreen() {
     inviteMutation.mutate({ email: inviteEmail.trim(), role: inviteRole });
   };
 
+  const closeMedicationModal = () => {
+    setMedModalOpen(false);
+    setEditingMedication(null);
+  };
+
+  const handleSaveMedication = (name: string, notes: string) => {
+    if (editingMedication) {
+      updateMedMutation.mutate(
+        {
+          careRecipientId: careRecipientId!,
+          medicationId: editingMedication.id,
+          name,
+          notes: notes || null,
+        },
+        {
+          onSuccess: closeMedicationModal,
+          onError: (err: Error) => Alert.alert('Could not save medication', err.message),
+        },
+      );
+    } else {
+      addMedMutation.mutate(
+        { careRecipientId: careRecipientId!, createdBy: user!.id, name, notes: notes || null },
+        {
+          onSuccess: closeMedicationModal,
+          onError: (err: Error) => Alert.alert('Could not save medication', err.message),
+        },
+      );
+    }
+  };
+
   const roleLabel = (role: string) => {
     if (role === 'admin') return 'Admin';
     if (role === 'senior_carer') return 'Senior Carer';
@@ -143,40 +187,103 @@ export default function AdminScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerActions}>
-        <Pressable style={styles.inviteButton} onPress={() => setInviteModalOpen(true)}>
-          <Text style={styles.inviteButtonText}>+ Invite carer</Text>
+      <View style={styles.tabRow}>
+        <Pressable
+          style={[styles.tab, activeTab === 'carers' && styles.tabActive]}
+          onPress={() => setActiveTab('carers')}
+        >
+          <Text style={[styles.tabText, activeTab === 'carers' && styles.tabTextActive]}>
+            Carers
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[styles.tab, activeTab === 'medications' && styles.tabActive]}
+          onPress={() => setActiveTab('medications')}
+        >
+          <Text style={[styles.tabText, activeTab === 'medications' && styles.tabTextActive]}>
+            As-needed medications
+          </Text>
         </Pressable>
       </View>
-      <FlatList
-        data={carers}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => {
-          const isSelf = item.user_id === user?.id;
-          return (
+
+      <View style={styles.headerActions}>
+        <Pressable
+          style={styles.inviteButton}
+          onPress={() =>
+            activeTab === 'carers' ? setInviteModalOpen(true) : setMedModalOpen(true)
+          }
+        >
+          <Text style={styles.inviteButtonText}>
+            {activeTab === 'carers' ? '+ Invite carer' : '+ Add medication'}
+          </Text>
+        </Pressable>
+      </View>
+
+      {activeTab === 'carers' ? (
+        <FlatList
+          data={carers}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => {
+            const isSelf = item.user_id === user?.id;
+            return (
+              <View style={styles.row}>
+                <View style={styles.rowInfo}>
+                  <Text style={styles.rowEmail}>{item.email ?? item.user_id}</Text>
+                  <Text style={styles.rowRole}>{roleLabel(item.role)}</Text>
+                </View>
+                {!isSelf && item.role !== 'admin' && (
+                  <View style={styles.rowActions}>
+                    <Pressable style={styles.actionButton} onPress={() => confirmRoleChange(item)}>
+                      <Text style={styles.actionText}>Change role</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[styles.actionButton, styles.revokeButton]}
+                      onPress={() => confirmRevoke(item)}
+                    >
+                      <Text style={[styles.actionText, styles.revokeText]}>Revoke</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            );
+          }}
+          ListEmptyComponent={<Text style={styles.empty}>No carers yet.</Text>}
+        />
+      ) : isMedLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" />
+        </View>
+      ) : (
+        <FlatList
+          data={medications}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
             <View style={styles.row}>
               <View style={styles.rowInfo}>
-                <Text style={styles.rowEmail}>{item.email ?? item.user_id}</Text>
-                <Text style={styles.rowRole}>{roleLabel(item.role)}</Text>
+                <Text style={styles.rowEmail}>{item.name}</Text>
+                {item.notes ? <Text style={styles.rowRole}>{item.notes}</Text> : null}
               </View>
-              {!isSelf && item.role !== 'admin' && (
-                <View style={styles.rowActions}>
-                  <Pressable style={styles.actionButton} onPress={() => confirmRoleChange(item)}>
-                    <Text style={styles.actionText}>Change role</Text>
-                  </Pressable>
-                  <Pressable
-                    style={[styles.actionButton, styles.revokeButton]}
-                    onPress={() => confirmRevoke(item)}
-                  >
-                    <Text style={[styles.actionText, styles.revokeText]}>Revoke</Text>
-                  </Pressable>
-                </View>
-              )}
+              <Pressable style={styles.actionButton} onPress={() => setEditingMedication(item)}>
+                <Text style={styles.actionText}>Edit</Text>
+              </Pressable>
             </View>
-          );
-        }}
-        ListEmptyComponent={<Text style={styles.empty}>No carers yet.</Text>}
+          )}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              No as-needed medications yet. Add one so carers can record ad-hoc doses.
+            </Text>
+          }
+        />
+      )}
+
+      <PRNMedicationFormModal
+        visible={medModalOpen || !!editingMedication}
+        medication={editingMedication}
+        isSaving={isSavingMedication}
+        onSave={handleSaveMedication}
+        onDismiss={closeMedicationModal}
       />
 
       <Modal visible={inviteModalOpen} animationType="slide" presentationStyle="formSheet">
@@ -237,6 +344,24 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   container: { flex: 1, backgroundColor: '#f9fafb' },
   list: { padding: 16, gap: 12 },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 8,
+    padding: 16,
+    paddingBottom: 0,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  tabActive: { borderColor: '#2563eb', backgroundColor: '#eff6ff' },
+  tabText: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  tabTextActive: { color: '#2563eb' },
   inviteButton: {
     backgroundColor: '#2563eb',
     borderRadius: 8,

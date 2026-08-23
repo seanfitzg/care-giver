@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -57,67 +56,65 @@ export function PRNMedicationSheet({
             <View style={styles.handle} />
             <Text style={styles.title}>As-Needed Medication</Text>
 
-            {isLoadingMedications ? (
-              <ActivityIndicator style={styles.loader} color="#7c3aed" />
-            ) : medications.length === 0 ? (
-              <Text style={styles.empty}>No as-needed medications configured.</Text>
-            ) : (
-              <>
-                <Text style={styles.sectionLabel}>Select medication</Text>
-                <ScrollView style={styles.medicationList} showsVerticalScrollIndicator={false}>
-                  {medications.map((med) => {
-                    const isSelected = med.id === selectedId;
-                    return (
-                      <Pressable
-                        key={med.id}
-                        style={[styles.medOption, isSelected && styles.medOptionSelected]}
-                        onPress={() => setSelectedId(med.id)}
-                      >
-                        <View style={styles.medOptionRow}>
-                          <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                            {isSelected && <View style={styles.radioDot} />}
-                          </View>
-                          <View style={styles.medTextBlock}>
-                            <Text style={[styles.medName, isSelected && styles.medNameSelected]}>
-                              {med.name}
-                            </Text>
-                            {med.notes ? <Text style={styles.medSubNotes}>{med.notes}</Text> : null}
-                          </View>
+            <Text style={styles.sectionLabel}>Select medication</Text>
+            <View style={styles.medicationList}>
+              {isLoadingMedications ? (
+                <ActivityIndicator style={styles.loader} color="#7c3aed" />
+              ) : medications.length === 0 ? (
+                <Text style={styles.empty}>No as-needed medications configured.</Text>
+              ) : (
+                medications.map((med) => {
+                  const isSelected = med.id === selectedId;
+                  return (
+                    <Pressable
+                      key={med.id}
+                      style={[styles.medOption, isSelected && styles.medOptionSelected]}
+                      onPress={() => setSelectedId(med.id)}
+                    >
+                      <View style={styles.medOptionRow}>
+                        <View style={[styles.radio, isSelected && styles.radioSelected]}>
+                          {isSelected && <View style={styles.radioDot} />}
                         </View>
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
+                        <View style={styles.medTextBlock}>
+                          <Text style={[styles.medName, isSelected && styles.medNameSelected]}>
+                            {med.name}
+                          </Text>
+                          {med.notes ? <Text style={styles.medSubNotes}>{med.notes}</Text> : null}
+                        </View>
+                      </View>
+                    </Pressable>
+                  );
+                })
+              )}
+            </View>
 
-                <Text style={styles.sectionLabel}>Note (optional)</Text>
-                <TextInput
-                  style={styles.noteInput}
-                  placeholder="e.g. reason for dose, observations..."
-                  placeholderTextColor="#9ca3af"
-                  value={notes}
-                  onChangeText={setNotes}
-                  multiline
-                  numberOfLines={3}
-                  textAlignVertical="top"
-                />
+            <Text style={styles.sectionLabel}>Note (optional)</Text>
+            <TextInput
+              style={styles.noteInput}
+              placeholder="e.g. reason for dose, observations..."
+              placeholderTextColor="#9ca3af"
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
 
-                <Pressable
-                  style={[
-                    styles.confirmBtn,
-                    (!selectedId || isSaving) && styles.confirmBtnDisabled,
-                  ]}
-                  onPress={handleConfirm}
-                  disabled={!selectedId || isSaving}
-                >
-                  <Text style={styles.confirmBtnText}>
-                    {isSaving ? 'Recording...' : 'Record Medication'}
-                  </Text>
-                </Pressable>
-                <Pressable style={styles.cancelBtn} onPress={onDismiss} disabled={isSaving}>
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </Pressable>
-              </>
-            )}
+            <Pressable
+              style={[
+                styles.confirmBtn,
+                (!selectedId || isSaving || medications.length === 0) && styles.confirmBtnDisabled,
+              ]}
+              onPress={handleConfirm}
+              disabled={!selectedId || isSaving || medications.length === 0}
+            >
+              <Text style={styles.confirmBtnText}>
+                {isSaving ? 'Recording...' : 'Record Medication'}
+              </Text>
+            </Pressable>
+            <Pressable style={styles.cancelBtn} onPress={onDismiss} disabled={isSaving}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </Pressable>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -170,7 +167,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   medicationList: {
-    maxHeight: 200,
     marginBottom: 16,
   },
   medOption: {
