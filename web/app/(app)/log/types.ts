@@ -1,5 +1,8 @@
 export type LogEventType =
-  'medication_scheduled' | 'as_needed_medication' | 'nutrition' | 'activity';
+  | 'medication_scheduled'
+  | 'as_needed_medication'
+  | 'nutrition'
+  | 'activity';
 export type LogStatus = 'completed' | 'missed' | 'skipped';
 
 // The "missed" filter option maps to status = 'missed' rather than event_type,

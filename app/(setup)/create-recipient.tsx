@@ -37,7 +37,7 @@ export default function CreateRecipientScreen() {
       return;
     }
     await refresh();
-    router.replace('/(tabs)');
+    router.replace('/admin');
   };
 
   return (
