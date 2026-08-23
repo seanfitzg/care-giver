@@ -9,6 +9,7 @@ import { formatLastSignIn, roleLabel, type CarerRow } from './types';
 interface Props {
   careRecipientId: string;
   currentUserId: string;
+  currentUserRole: 'admin' | 'senior_carer';
   initialCarers: CarerRow[];
 }
 
@@ -40,7 +41,13 @@ const roleSelectStyle: React.CSSProperties = {
   background: '#fff',
 };
 
-export default function CarerTable({ careRecipientId, currentUserId, initialCarers }: Props) {
+export default function CarerTable({
+  careRecipientId,
+  currentUserId,
+  currentUserRole,
+  initialCarers,
+}: Props) {
+  const isAdminViewer = currentUserRole === 'admin';
   const [carers, setCarers] = useState<CarerRow[]>(initialCarers);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [revokeCandidate, setRevokeCandidate] = useState<CarerRow | null>(null);
@@ -92,22 +99,24 @@ export default function CarerTable({ careRecipientId, currentUserId, initialCare
         }}
       >
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#111827', margin: 0 }}>Care team</h1>
-        <button
-          type="button"
-          onClick={() => setInviteOpen(true)}
-          style={{
-            background: '#2563eb',
-            color: '#fff',
-            fontSize: 12.5,
-            fontWeight: 600,
-            padding: '8px 16px',
-            borderRadius: 20,
-            border: 'none',
-            cursor: 'pointer',
-          }}
-        >
-          + Invite carer
-        </button>
+        {isAdminViewer && (
+          <button
+            type="button"
+            onClick={() => setInviteOpen(true)}
+            style={{
+              background: '#2563eb',
+              color: '#fff',
+              fontSize: 12.5,
+              fontWeight: 600,
+              padding: '8px 16px',
+              borderRadius: 20,
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            + Invite carer
+          </button>
+        )}
       </div>
 
       <div
@@ -130,7 +139,7 @@ export default function CarerTable({ careRecipientId, currentUserId, initialCare
           <tbody>
             {carers.map((carer) => {
               const isSelf = carer.user_id === currentUserId;
-              const canManage = !isSelf && carer.role !== 'admin';
+              const canManage = isAdminViewer && !isSelf && carer.role !== 'admin';
               const saving = savingUserId === carer.user_id;
               return (
                 <tr key={carer.user_id}>

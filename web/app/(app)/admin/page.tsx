@@ -1,7 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import AsNeededMedicationsTable from './AsNeededMedicationsTable';
 import CarerTable from './CarerTable';
 import type { CarerRow } from './types';
+import type { PRNMedication } from '../components/types';
 
 export default async function AdminPage() {
   const supabase = await createClient();
@@ -16,19 +18,37 @@ export default async function AdminPage() {
     .eq('user_id', user.id)
     .single();
 
-  if (roleData?.role !== 'admin') redirect('/');
+  if (roleData?.role !== 'admin' && roleData?.role !== 'senior_carer') redirect('/');
 
   const careRecipientId = roleData.care_recipient_id;
+  const currentUserRole = roleData.role;
 
-  const { data: carers } = await supabase.rpc('get_carers_with_emails', {
-    p_care_recipient_id: careRecipientId,
-  });
+  const [carersResult, medicationsResult] = await Promise.all([
+    supabase.rpc('get_carers_with_emails', {
+      p_care_recipient_id: careRecipientId,
+    }),
+    supabase
+      .from('as_needed_medications')
+      .select('id, name, notes')
+      .eq('care_recipient_id', careRecipientId)
+      .order('name', { ascending: true }),
+  ]);
 
   return (
-    <CarerTable
-      careRecipientId={careRecipientId}
-      currentUserId={user.id}
-      initialCarers={(carers ?? []) as CarerRow[]}
-    />
+    <>
+      <CarerTable
+        careRecipientId={careRecipientId}
+        currentUserId={user.id}
+        currentUserRole={currentUserRole}
+        initialCarers={(carersResult.data ?? []) as CarerRow[]}
+      />
+      <div style={{ marginTop: 32 }}>
+        <AsNeededMedicationsTable
+          careRecipientId={careRecipientId}
+          currentUserId={user.id}
+          initialMedications={(medicationsResult.data ?? []) as PRNMedication[]}
+        />
+      </div>
+    </>
   );
 }

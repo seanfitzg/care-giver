@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 const queryClient = new QueryClient();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, loading, careRecipientId } = useAuth();
+  const { session, loading, careRecipientId, isAdmin } = useAuth();
   const segments = useSegments() as string[];
   const router = useRouter();
 
@@ -29,10 +29,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (inAuthGroup || inSetupGroup) {
+    if (inAuthGroup) {
       router.replace('/(tabs)');
+    } else if (inSetupGroup) {
+      router.replace(isAdmin ? ('/admin' as never) : '/(tabs)');
     }
-  }, [session, loading, segments, router, careRecipientId]);
+  }, [session, loading, segments, router, careRecipientId, isAdmin]);
 
   if (loading) {
     return (
