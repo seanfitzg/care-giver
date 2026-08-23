@@ -5,7 +5,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -58,7 +57,7 @@ export function PRNMedicationSheet({
             <Text style={styles.title}>As-Needed Medication</Text>
 
             <Text style={styles.sectionLabel}>Select medication</Text>
-            <ScrollView style={styles.medicationList} showsVerticalScrollIndicator={false}>
+            <View style={styles.medicationList}>
               {isLoadingMedications ? (
                 <ActivityIndicator style={styles.loader} color="#7c3aed" />
               ) : medications.length === 0 ? (
@@ -87,7 +86,7 @@ export function PRNMedicationSheet({
                   );
                 })
               )}
-            </ScrollView>
+            </View>
 
             <Text style={styles.sectionLabel}>Note (optional)</Text>
             <TextInput
@@ -168,7 +167,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   medicationList: {
-    maxHeight: 200,
     marginBottom: 16,
   },
   medOption: {
