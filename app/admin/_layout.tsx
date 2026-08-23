@@ -18,10 +18,7 @@ function BackButton() {
 export default function AdminLayout() {
   return (
     <Stack>
-      <Stack.Screen
-        name="index"
-        options={{ title: 'Carer management', headerLeft: () => <BackButton /> }}
-      />
+      <Stack.Screen name="index" options={{ title: 'Admin', headerLeft: () => <BackButton /> }} />
     </Stack>
   );
 }
