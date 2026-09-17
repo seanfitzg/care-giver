@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 
 export type UserRole = 'admin' | 'senior_carer' | 'carer';
 
-type PatientAssignment = {
+export type PatientAssignment = {
   careRecipientId: string;
   careRecipientName: string | null;
   role: UserRole;

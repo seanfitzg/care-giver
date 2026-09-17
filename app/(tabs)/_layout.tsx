@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Link, Tabs } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { PatientSwitcherSheet } from '@/components/PatientSwitcherSheet';
 import { useAuth } from '@/contexts/AuthContext';
 
 const TAB_TITLES: Record<string, string> = {
@@ -10,7 +12,22 @@ const TAB_TITLES: Record<string, string> = {
 };
 
 export default function TabLayout() {
-  const { isAdmin, role, careRecipientName, signOut } = useAuth();
+  const {
+    isAdmin,
+    role,
+    allPatients,
+    careRecipientId,
+    careRecipientName,
+    setActivePatient,
+    signOut,
+  } = useAuth();
+  const [switcherVisible, setSwitcherVisible] = useState(false);
+  const canSwitch = allPatients.length > 1;
+
+  const handleSelectPatient = async (id: string) => {
+    setSwitcherVisible(false);
+    await setActivePatient(id);
+  };
 
   const settingsHref = '/admin';
   const settingsHeaderRight =
@@ -31,53 +48,69 @@ export default function TabLayout() {
   );
 
   return (
-    <Tabs
-      screenOptions={({ route }) => ({
-        tabBarActiveTintColor: '#2563eb',
-        headerShown: true,
-        headerLeft,
-        headerRight: settingsHeaderRight,
-        headerTitle: () => (
-          <View style={{ alignItems: 'center' }}>
-            <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827' }}>
-              {TAB_TITLES[route.name] ?? route.name}
-            </Text>
-            {careRecipientName ? (
-              <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 1 }}>
-                {careRecipientName}
+    <>
+      <Tabs
+        screenOptions={({ route }) => ({
+          tabBarActiveTintColor: '#2563eb',
+          headerShown: true,
+          headerLeft,
+          headerRight: settingsHeaderRight,
+          headerTitle: () => (
+            <Pressable
+              style={{ alignItems: 'center' }}
+              onPress={() => setSwitcherVisible(true)}
+              disabled={!canSwitch}
+              accessibilityRole="button"
+              accessibilityLabel="Switch patient"
+            >
+              <Text style={{ fontSize: 17, fontWeight: '600', color: '#111827' }}>
+                {TAB_TITLES[route.name] ?? route.name}
               </Text>
-            ) : null}
-          </View>
-        ),
-      })}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Today',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="today-outline" size={size} color={color} />
+              {careRecipientName ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 1 }}>
+                  <Text style={{ fontSize: 12, color: '#6b7280' }}>{careRecipientName}</Text>
+                  {canSwitch ? <Ionicons name="chevron-down" size={12} color="#6b7280" /> : null}
+                </View>
+              ) : null}
+            </Pressable>
           ),
-        }}
+        })}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Today',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="today-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="schedule"
+          options={{
+            title: 'Schedule',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="calendar-outline" size={size} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="log"
+          options={{
+            title: 'Log',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="list-outline" size={size} color={color} />
+            ),
+          }}
+        />
+      </Tabs>
+      <PatientSwitcherSheet
+        visible={switcherVisible}
+        patients={allPatients}
+        activeCareRecipientId={careRecipientId}
+        onSelect={handleSelectPatient}
+        onDismiss={() => setSwitcherVisible(false)}
       />
-      <Tabs.Screen
-        name="schedule"
-        options={{
-          title: 'Schedule',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="log"
-        options={{
-          title: 'Log',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="list-outline" size={size} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+    </>
   );
 }
