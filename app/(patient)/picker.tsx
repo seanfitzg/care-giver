@@ -1,12 +1,7 @@
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
-
-const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Admin',
-  senior_carer: 'Senior Carer',
-  carer: 'Carer',
-};
+import { useAuth } from '@/contexts/AuthContext';
+import { ROLE_LABELS } from '@/lib/roles';
 
 export default function PatientPickerScreen() {
   const { allPatients, setActivePatient, signOut } = useAuth();
