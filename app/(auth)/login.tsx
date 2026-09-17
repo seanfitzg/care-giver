@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,6 +20,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState(DEV_LOGIN_EMAIL);
   const [password, setPassword] = useState(DEV_LOGIN_PASSWORD);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleLogin = async () => {
     if (!email.trim() || !password) {
@@ -76,6 +78,10 @@ export default function LoginScreen() {
             <Text style={styles.buttonText}>Sign in</Text>
           )}
         </Pressable>
+
+        <Pressable style={styles.linkButton} onPress={() => router.push('/(auth)/signup')}>
+          <Text style={styles.linkText}>New here? Create New User</Text>
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -127,5 +133,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  linkButton: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  linkText: {
+    color: '#2563eb',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

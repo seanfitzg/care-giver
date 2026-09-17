@@ -1,6 +1,5 @@
-import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,69 +14,63 @@ import {
 import { supabase } from '@/lib/supabase';
 import { validatePasswordConfirmation } from '@/lib/validation';
 
-export default function SetupScreen() {
+const NATIVE_REDIRECT = 'caregiver://setup';
+
+export default function SignUpScreen() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionReady, setSessionReady] = useState(false);
-  const [confirmationType, setConfirmationType] = useState<'invite' | 'signup' | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const router = useRouter();
-  const url = Linking.useURL();
 
-  // Exchange invite/signup tokens from the deep-link URL fragment for a session.
-  useEffect(() => {
-    if (!url) return;
-    const fragment = url.split('#')[1];
-    if (!fragment) return;
-    const params = new URLSearchParams(fragment);
-    const accessToken = params.get('access_token');
-    const refreshToken = params.get('refresh_token');
-    const type = params.get('type');
-    if ((type === 'invite' || type === 'signup') && accessToken && refreshToken) {
-      setConfirmationType(type);
-      supabase.auth
-        .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error }) => {
-          if (error) {
-            Alert.alert(
-              type === 'signup'
-                ? 'Invalid or expired confirmation link'
-                : 'Invalid or expired invite link',
-              error.message,
-            );
-          } else if (type === 'signup') {
-            // A signed-up User already set their password at sign-up time —
-            // just finish establishing the session and route into the app.
-            router.replace('/(tabs)');
-          } else {
-            setSessionReady(true);
-          }
-        });
+  const handleSignUp = async () => {
+    if (!name.trim() || !email.trim()) {
+      Alert.alert('Please enter your name and email.');
+      return;
     }
-  }, [url, router]);
-
-  const handleSetPassword = async () => {
     const validationError = validatePasswordConfirmation(password, confirm);
     if (validationError) {
       Alert.alert(validationError);
       return;
     }
+
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { name: name.trim() },
+        emailRedirectTo: NATIVE_REDIRECT,
+      },
+    });
     setLoading(false);
+
     if (error) {
-      Alert.alert('Failed to set password', error.message);
+      Alert.alert('Sign up failed', error.message);
       return;
     }
-    router.replace('/(tabs)');
+
+    // When email confirmations are required, Supabase returns a user with no
+    // identities (instead of an error) for an email that's already registered,
+    // to prevent account enumeration by default. This app deliberately opts
+    // out of that obscuring — see #107's policy decision — and surfaces it.
+    if (data.user && data.user.identities?.length === 0) {
+      Alert.alert('This email is already registered', 'Log in instead.');
+      return;
+    }
+
+    setSubmitted(true);
   };
 
-  if (!sessionReady) {
+  if (submitted) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={styles.waiting}>
-          {confirmationType === 'signup' ? 'Confirming your account…' : 'Verifying invite link…'}
+        <Text style={styles.title}>Check your email</Text>
+        <Text style={styles.subtitle}>
+          We&apos;ve sent a confirmation link to your email address. Follow it to finish creating
+          your account.
         </Text>
       </View>
     );
@@ -89,12 +82,34 @@ export default function SetupScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>Create your password</Text>
-        <Text style={styles.subtitle}>Choose a password to complete your account setup.</Text>
+        <Text style={styles.formTitle}>Create your account</Text>
 
         <TextInput
           style={styles.input}
-          placeholder="New password"
+          placeholder="Display name"
+          placeholderTextColor="#9ca3af"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+          textContentType="name"
+          autoComplete="name"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          placeholderTextColor="#9ca3af"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          autoComplete="email"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
           placeholderTextColor="#9ca3af"
           value={password}
           onChangeText={setPassword}
@@ -114,14 +129,18 @@ export default function SetupScreen() {
 
         <Pressable
           style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSetPassword}
+          onPress={handleSignUp}
           disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Set password</Text>
+            <Text style={styles.buttonText}>Create account</Text>
           )}
+        </Pressable>
+
+        <Pressable style={styles.linkButton} onPress={() => router.back()}>
+          <Text style={styles.linkText}>Already have an account? Sign in</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -133,11 +152,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
     gap: 12,
-  },
-  waiting: {
-    color: '#6b7280',
-    fontSize: 15,
+    backgroundColor: '#f9fafb',
   },
   container: {
     flex: 1,
@@ -160,11 +177,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111827',
     marginBottom: 8,
+    textAlign: 'center',
+  },
+  formTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 24,
   },
   subtitle: {
     fontSize: 14,
     color: '#6b7280',
-    marginBottom: 24,
+    textAlign: 'center',
   },
   input: {
     borderWidth: 1,
@@ -189,5 +213,14 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  linkButton: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  linkText: {
+    color: '#2563eb',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
