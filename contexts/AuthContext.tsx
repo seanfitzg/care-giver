@@ -1,19 +1,25 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 type UserRole = 'admin' | 'senior_carer' | 'carer';
 
-type UserData = {
-  role: UserRole;
+type PatientAssignment = {
   careRecipientId: string;
   careRecipientName: string | null;
+  role: UserRole;
 };
+
+const ACTIVE_PATIENT_STORAGE_KEY = 'active-care-recipient-id';
 
 type AuthContextValue = {
   session: Session | null;
   user: User | null;
   loading: boolean;
+  allPatients: PatientAssignment[];
+  activePatient: PatientAssignment | null;
+  setActivePatient: (careRecipientId: string) => Promise<void>;
   role: UserRole | null;
   careRecipientId: string | null;
   careRecipientName: string | null;
@@ -24,44 +30,59 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function loadUserData(userId: string): Promise<UserData | null> {
-  const { data: roleData, error } = await supabase
+async function loadAllPatients(userId: string): Promise<PatientAssignment[]> {
+  const { data, error } = await supabase
     .from('user_roles')
-    .select('role, care_recipient_id')
-    .eq('user_id', userId)
-    .single();
-  if (error || !roleData) return null;
+    .select('role, care_recipient_id, care_recipients(name)')
+    .eq('user_id', userId);
+  if (error || !data) return [];
 
-  const { data: recipientData } = await supabase
-    .from('care_recipients')
-    .select('name')
-    .eq('id', roleData.care_recipient_id)
-    .single();
+  return data.map((row) => {
+    const careRecipient = Array.isArray(row.care_recipients)
+      ? row.care_recipients[0]
+      : row.care_recipients;
 
-  return {
-    role: roleData.role as UserRole,
-    careRecipientId: roleData.care_recipient_id,
-    careRecipientName: recipientData?.name ?? null,
-  };
+    return {
+      careRecipientId: row.care_recipient_id,
+      careRecipientName: careRecipient?.name ?? null,
+      role: row.role as UserRole,
+    };
+  });
+}
+
+async function resolveActivePatient(
+  patients: PatientAssignment[],
+): Promise<PatientAssignment | null> {
+  const storedId = await AsyncStorage.getItem(ACTIVE_PATIENT_STORAGE_KEY);
+  const stored = storedId ? patients.find((p) => p.careRecipientId === storedId) : undefined;
+  if (stored) return stored;
+
+  if (storedId) await AsyncStorage.removeItem(ACTIVE_PATIENT_STORAGE_KEY);
+  return null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [careRecipientId, setCareRecipientId] = useState<string | null>(null);
-  const [careRecipientName, setCareRecipientName] = useState<string | null>(null);
+  const [allPatients, setAllPatients] = useState<PatientAssignment[]>([]);
+  const [activePatient, setActivePatientState] = useState<PatientAssignment | null>(null);
 
-  function applyUserData(data: UserData | null) {
-    setRole(data?.role ?? null);
-    setCareRecipientId(data?.careRecipientId ?? null);
-    setCareRecipientName(data?.careRecipientName ?? null);
+  async function applyUserData(userId: string | null) {
+    if (!userId) {
+      setAllPatients([]);
+      setActivePatientState(null);
+      return;
+    }
+
+    const patients = await loadAllPatients(userId);
+    setAllPatients(patients);
+    setActivePatientState(await resolveActivePatient(patients));
   }
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      if (session) applyUserData(await loadUserData(session.user.id));
+      await applyUserData(session?.user.id ?? null);
       setLoading(false);
     });
 
@@ -69,11 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session);
-      if (session) {
-        applyUserData(await loadUserData(session.user.id));
-      } else {
-        applyUserData(null);
-      }
+      await applyUserData(session?.user.id ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -83,10 +100,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { session },
     } = await supabase.auth.getSession();
-    if (session) applyUserData(await loadUserData(session.user.id));
+    await applyUserData(session?.user.id ?? null);
   }, []);
 
+  const setActivePatient = useCallback(
+    async (careRecipientId: string) => {
+      const match = allPatients.find((p) => p.careRecipientId === careRecipientId);
+      if (!match) return;
+      await AsyncStorage.setItem(ACTIVE_PATIENT_STORAGE_KEY, careRecipientId);
+      setActivePatientState(match);
+    },
+    [allPatients],
+  );
+
   const signOut = async () => {
+    await AsyncStorage.removeItem(ACTIVE_PATIENT_STORAGE_KEY);
     await supabase.auth.signOut();
   };
 
@@ -96,10 +124,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         user: session?.user ?? null,
         loading,
-        role,
-        careRecipientId,
-        careRecipientName,
-        isAdmin: role === 'admin',
+        allPatients,
+        activePatient,
+        setActivePatient,
+        role: activePatient?.role ?? null,
+        careRecipientId: activePatient?.careRecipientId ?? null,
+        careRecipientName: activePatient?.careRecipientName ?? null,
+        isAdmin: activePatient?.role === 'admin',
         signOut,
         refresh,
       }}
