@@ -78,6 +78,8 @@ When asked for recommendations, research, ideas, or design discussions, save the
 
 When the user says 'implement issue #N', start implementing immediately after a brief plan — do not first verify whether the issue is already done or run extensive exploration. Trust the user's request.
 
+Before starting, check whether issue #N carries the `epic` label (see Issue Conventions below). If it does, stop and ask the user which sub-issue to implement instead — an epic is a parent spec meant to be split into sub-issues, not implemented directly as one ticket.
+
 Before writing any code: `git fetch origin master` and pull the latest, then create a new branch off it for the ticket (e.g. `feat/issue-108-short-description`). Do not commit ticket work onto whatever branch happens to be currently checked out — it may be a stale or already-merged branch left over from prior work.
 
 ## Platform Conventions
