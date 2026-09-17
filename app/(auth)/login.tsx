@@ -12,9 +12,12 @@ import {
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
 
+const DEV_LOGIN_EMAIL = __DEV__ ? (process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL ?? '') : '';
+const DEV_LOGIN_PASSWORD = __DEV__ ? (process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD ?? '') : '';
+
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState(DEV_LOGIN_EMAIL);
+  const [password, setPassword] = useState(DEV_LOGIN_PASSWORD);
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
