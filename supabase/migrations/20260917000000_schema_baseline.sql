@@ -1,17 +1,30 @@
+-- Consolidated schema baseline. Supersedes the 20 incremental migrations
+-- previously applied between 2026-05-01 and 2026-08-16 (schema_baseline
+-- through get_carers_with_emails_last_sign_in) — squashed into one file
+-- now that the schema has stabilized. This is the full current-state
+-- schema, not a diff.
+
+-- =============================================================
+-- EXTENSIONS
+-- =============================================================
+
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA extensions;
+
 -- =============================================================
 -- ENUMS
 -- =============================================================
 
 CREATE TYPE user_role AS ENUM ('admin', 'senior_carer', 'carer');
 
-CREATE TYPE scheduled_item_type AS ENUM ('medication_scheduled', 'feeding', 'activity');
+CREATE TYPE scheduled_item_type AS ENUM ('medication_scheduled', 'nutrition', 'activity');
+
+CREATE TYPE nutrition_type AS ENUM ('bolus', 'oral_self', 'oral_carer');
 
 CREATE TYPE event_type AS ENUM (
   'medication_scheduled',
   'as_needed_medication',
-  'feeding',
-  'activity',
-  'missed'
+  'nutrition',
+  'activity'
 );
 
 CREATE TYPE event_status AS ENUM ('completed', 'missed', 'skipped');
@@ -29,7 +42,8 @@ CREATE TABLE care_recipients (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
--- Role assignment per user per care_recipient.
+-- Role assignment per user per care_recipient. A user can hold a role on
+-- more than one care_recipient (multi-patient support).
 CREATE TABLE user_roles (
   id                uuid      PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id           uuid      NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -39,52 +53,43 @@ CREATE TABLE user_roles (
   UNIQUE (user_id, care_recipient_id)
 );
 
--- All recurring tasks: medications, feeding sessions, and activities.
+-- All recurring tasks: medications, nutrition sessions, and activities.
 -- time_of_day applies to medication_scheduled and activity.
--- interval_minutes applies to feeding.
--- bolus_rest_minutes applies to feeding (drives the countdown timer).
+-- nutrition_type/bolus_rest_minutes apply to nutrition items.
+-- days_of_week: NULL = every day; otherwise 0=Sun..6=Sat (matches JS Date.getDay()).
 CREATE TABLE scheduled_items (
   id                       uuid                PRIMARY KEY DEFAULT gen_random_uuid(),
   care_recipient_id        uuid                NOT NULL REFERENCES care_recipients(id) ON DELETE CASCADE,
   type                     scheduled_item_type NOT NULL,
   name                     text                NOT NULL,
   time_of_day              time,
-  interval_minutes         integer,
   overdue_window_minutes   integer             NOT NULL DEFAULT 15,
-  missed_threshold_minutes integer             NOT NULL DEFAULT 60,
   is_compulsory            boolean             NOT NULL DEFAULT true,
   bolus_rest_minutes       integer,
   created_by               uuid                NOT NULL REFERENCES auth.users(id),
-  created_at               timestamptz         NOT NULL DEFAULT now()
+  created_at               timestamptz         NOT NULL DEFAULT now(),
+  duration_minutes         integer,
+  nutrition_type           nutrition_type,
+  description              text,
+  days_of_week             integer[]
 );
 
--- Guided feeding session records. Updated in-place as the session progresses,
--- then considered immutable once completed_at is set.
-CREATE TABLE feeding_sessions (
+-- Guided nutrition session records. Updated in-place as the session
+-- progresses, then considered immutable once completed_at is set.
+CREATE TABLE nutrition_sessions (
   id                     uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
   care_recipient_id      uuid        NOT NULL REFERENCES care_recipients(id) ON DELETE CASCADE,
-  scheduled_item_id      uuid        REFERENCES scheduled_items(id),
+  scheduled_item_id      uuid        REFERENCES scheduled_items(id) ON DELETE SET NULL,
   carer_id               uuid        NOT NULL REFERENCES auth.users(id),
   started_at             timestamptz NOT NULL,
   completed_at           timestamptz,
   notes                  text,
-  bolus_rounds_completed integer,
   bulk_confirmed         boolean     NOT NULL DEFAULT false,
-  created_at             timestamptz NOT NULL DEFAULT now()
-);
-
--- Append-only audit log. No UPDATE or DELETE policies are granted.
-CREATE TABLE event_log (
-  id                uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
-  care_recipient_id uuid         NOT NULL REFERENCES care_recipients(id) ON DELETE CASCADE,
-  event_type        event_type   NOT NULL,
-  scheduled_item_id uuid         REFERENCES scheduled_items(id),
-  carer_id          uuid         REFERENCES auth.users(id),
-  occurred_at       timestamptz  NOT NULL,
-  status            event_status NOT NULL,
-  notes             text,
-  bulk_confirmed    boolean      NOT NULL DEFAULT false,
-  created_at        timestamptz  NOT NULL DEFAULT now()
+  created_at             timestamptz NOT NULL DEFAULT now(),
+  all_consumed           boolean,
+  bolus_rest_minutes     integer,
+  bolus_rounds_completed integer,
+  rest_started_at        timestamptz
 );
 
 -- PRN (as-needed) medication definitions. Carers log against these at any time.
@@ -95,6 +100,21 @@ CREATE TABLE as_needed_medications (
   notes             text,
   created_by        uuid        NOT NULL REFERENCES auth.users(id),
   created_at        timestamptz NOT NULL DEFAULT now()
+);
+
+-- Append-only audit log. No UPDATE or DELETE policies are granted.
+CREATE TABLE event_log (
+  id                uuid         PRIMARY KEY DEFAULT gen_random_uuid(),
+  care_recipient_id uuid         NOT NULL REFERENCES care_recipients(id) ON DELETE CASCADE,
+  event_type        event_type   NOT NULL,
+  scheduled_item_id uuid         REFERENCES scheduled_items(id) ON DELETE SET NULL,
+  carer_id          uuid         REFERENCES auth.users(id),
+  occurred_at       timestamptz  NOT NULL,
+  status            event_status NOT NULL,
+  notes             text,
+  bulk_confirmed    boolean      NOT NULL DEFAULT false,
+  created_at        timestamptz  NOT NULL DEFAULT now(),
+  prn_medication_id uuid         REFERENCES as_needed_medications(id)
 );
 
 -- Expo push tokens per user. Upserted on each app launch.
@@ -124,8 +144,8 @@ CREATE INDEX event_log_care_recipient_occurred_at_idx
 CREATE INDEX event_log_scheduled_item_id_idx
   ON event_log (scheduled_item_id);
 
-CREATE INDEX feeding_sessions_care_recipient_started_at_idx
-  ON feeding_sessions (care_recipient_id, started_at);
+CREATE INDEX nutrition_sessions_care_recipient_started_at_idx
+  ON nutrition_sessions (care_recipient_id, started_at);
 
 CREATE INDEX push_tokens_user_id_idx
   ON push_tokens (user_id);
@@ -200,13 +220,131 @@ END;
 $$;
 
 -- =============================================================
+-- ADMIN QUERY RPCs
+-- =============================================================
+
+CREATE OR REPLACE FUNCTION public.get_carer_names(p_care_recipient_id uuid)
+RETURNS TABLE(user_id uuid, display_name text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT has_care_recipient_role(p_care_recipient_id) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+  RETURN QUERY
+    SELECT ur.user_id,
+           COALESCE(u.raw_user_meta_data->>'name', u.email::text) AS display_name
+    FROM public.user_roles ur
+    JOIN auth.users u ON u.id = ur.user_id
+    WHERE ur.care_recipient_id = p_care_recipient_id;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.get_carers_with_emails(p_care_recipient_id uuid)
+RETURNS TABLE (
+  id                uuid,
+  user_id           uuid,
+  role              user_role,
+  email             text,
+  last_sign_in_at   timestamptz
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT is_admin_for(p_care_recipient_id) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+  RETURN QUERY
+    SELECT ur.id, ur.user_id, ur.role, u.email::text, u.last_sign_in_at
+    FROM public.user_roles ur
+    JOIN auth.users u ON u.id = ur.user_id
+    WHERE ur.care_recipient_id = p_care_recipient_id;
+END;
+$$;
+
+-- =============================================================
+-- SCHEDULED JOB: MARK MISSED EVENTS
+-- =============================================================
+-- Finds scheduled items past their overdue window with no terminal event
+-- today, then atomically inserts missed entries for them.
+-- SECURITY DEFINER so the cron job can bypass RLS.
+
+CREATE OR REPLACE FUNCTION public.mark_missed_events()
+RETURNS TABLE(
+  inserted_id            uuid,
+  item_id                uuid,
+  item_care_recipient_id uuid,
+  item_event_type        text
+)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  SET LOCAL timezone TO 'GMT';
+
+  RETURN QUERY
+  WITH overdue AS (
+    SELECT
+      si.id                                                                        AS scheduled_item_id,
+      si.care_recipient_id,
+      si.type::text                                                                AS event_type_text,
+      (CURRENT_DATE + si.time_of_day + (si.overdue_window_minutes * interval '1 minute')) AS missed_at
+    FROM scheduled_items si
+    WHERE si.time_of_day IS NOT NULL
+      -- Day-of-week guard: skip items not scheduled for today
+      AND (si.days_of_week IS NULL OR EXTRACT(DOW FROM CURRENT_DATE)::int = ANY(si.days_of_week))
+      -- Threshold has passed today
+      AND (CURRENT_DATE + si.time_of_day + (si.overdue_window_minutes * interval '1 minute')) < now()
+      -- No completed or skipped event exists for this item today
+      AND NOT EXISTS (
+        SELECT 1 FROM event_log el
+        WHERE el.scheduled_item_id = si.id
+          AND el.status IN ('completed', 'skipped')
+          AND el.occurred_at >= CURRENT_DATE
+          AND el.occurred_at < CURRENT_DATE + interval '1 day'
+      )
+      -- Idempotency: skip if a missed entry already exists today
+      AND NOT EXISTS (
+        SELECT 1 FROM event_log el
+        WHERE el.scheduled_item_id = si.id
+          AND el.status = 'missed'
+          AND el.occurred_at >= CURRENT_DATE
+          AND el.occurred_at < CURRENT_DATE + interval '1 day'
+      )
+  ),
+  inserted AS (
+    INSERT INTO event_log (care_recipient_id, event_type, scheduled_item_id, carer_id, occurred_at, status)
+    SELECT
+      o.care_recipient_id,
+      o.event_type_text::event_type,
+      o.scheduled_item_id,
+      NULL::uuid,   -- automated entry; no carer
+      o.missed_at,
+      'missed'::event_status
+    FROM overdue o
+    RETURNING id, scheduled_item_id, care_recipient_id, event_type::text
+  )
+  SELECT i.id, i.scheduled_item_id, i.care_recipient_id, i.event_type
+  FROM inserted i;
+END;
+$$;
+
+SELECT cron.schedule(
+  'mark-missed-events',
+  '* * * * *',
+  'SELECT public.mark_missed_events()'
+);
+
+-- =============================================================
 -- ENABLE ROW LEVEL SECURITY
 -- =============================================================
 
 ALTER TABLE care_recipients       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scheduled_items       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feeding_sessions      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE nutrition_sessions    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE event_log             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE as_needed_medications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE push_tokens           ENABLE ROW LEVEL SECURITY;
@@ -232,7 +370,8 @@ CREATE POLICY "user_roles_insert"
 
 CREATE POLICY "user_roles_update"
   ON user_roles FOR UPDATE TO authenticated
-  USING (is_admin_for(care_recipient_id));
+  USING (is_admin_for(care_recipient_id))
+  WITH CHECK (is_admin_for(care_recipient_id));
 
 -- Admins cannot delete their own role (prevents lockout).
 CREATE POLICY "user_roles_delete"
@@ -251,41 +390,50 @@ CREATE POLICY "scheduled_items_insert"
 
 CREATE POLICY "scheduled_items_update"
   ON scheduled_items FOR UPDATE TO authenticated
-  USING (has_elevated_role(care_recipient_id));
+  USING (has_elevated_role(care_recipient_id))
+  WITH CHECK (has_elevated_role(care_recipient_id));
 
 CREATE POLICY "scheduled_items_delete"
   ON scheduled_items FOR DELETE TO authenticated
   USING (has_elevated_role(care_recipient_id));
 
--- feeding_sessions
+-- nutrition_sessions
 -- Members read; carers create and update their own sessions; admins manage any.
-CREATE POLICY "feeding_sessions_select"
-  ON feeding_sessions FOR SELECT TO authenticated
+CREATE POLICY "nutrition_sessions_select"
+  ON nutrition_sessions FOR SELECT TO authenticated
   USING (has_care_recipient_role(care_recipient_id));
 
-CREATE POLICY "feeding_sessions_insert"
-  ON feeding_sessions FOR INSERT TO authenticated
+CREATE POLICY "nutrition_sessions_insert"
+  ON nutrition_sessions FOR INSERT TO authenticated
   WITH CHECK (
     has_care_recipient_role(care_recipient_id)
     AND (carer_id = auth.uid() OR is_admin_for(care_recipient_id))
   );
 
-CREATE POLICY "feeding_sessions_update"
-  ON feeding_sessions FOR UPDATE TO authenticated
+CREATE POLICY "nutrition_sessions_update"
+  ON nutrition_sessions FOR UPDATE TO authenticated
   USING (
+    has_care_recipient_role(care_recipient_id)
+    AND (carer_id = auth.uid() OR is_admin_for(care_recipient_id))
+  )
+  WITH CHECK (
     has_care_recipient_role(care_recipient_id)
     AND (carer_id = auth.uid() OR is_admin_for(care_recipient_id))
   );
 
 -- event_log
 -- Append-only: members read and insert; no UPDATE or DELETE policies granted.
+-- carer_id may be NULL for automated entries (e.g. the mark_missed_events cron).
 CREATE POLICY "event_log_select"
   ON event_log FOR SELECT TO authenticated
   USING (has_care_recipient_role(care_recipient_id));
 
 CREATE POLICY "event_log_insert"
   ON event_log FOR INSERT TO authenticated
-  WITH CHECK (has_care_recipient_role(care_recipient_id));
+  WITH CHECK (
+    has_care_recipient_role(care_recipient_id)
+    AND (carer_id IS NULL OR carer_id = auth.uid())
+  );
 
 -- as_needed_medications
 -- All members read; admin and senior_carer manage.
@@ -322,3 +470,12 @@ CREATE POLICY "push_tokens_update"
 CREATE POLICY "push_tokens_delete"
   ON push_tokens FOR DELETE TO authenticated
   USING (user_id = auth.uid());
+
+-- =============================================================
+-- REALTIME
+-- =============================================================
+-- Without this, postgres_changes subscriptions on this table silently
+-- receive nothing in production (local dev auto-includes all tables;
+-- cloud requires explicit inclusion).
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.event_log;
