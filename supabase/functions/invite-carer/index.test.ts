@@ -1,5 +1,5 @@
 import { assertEquals } from 'jsr:@std/assert';
-import { handler } from './index.ts';
+import { handler, resolveInvitedUserId } from './index.ts';
 
 const VALID_BODY = {
   email: 'newcarer@test.local',
@@ -156,4 +156,68 @@ Deno.test('redirect_to web origin rejected when INVITE_WEB_ORIGIN env var not se
   assertEquals(res.status, 400);
   const body = await res.json();
   assertEquals(body.error, 'redirect_to is not on the allowlist');
+});
+
+// ── resolveInvitedUserId ─────────────────────────────────────────────────────
+// Unit tests for the invite-vs-reuse decision, isolated from the network.
+
+Deno.test('existing user: reuses the existing id and does not invite', async () => {
+  let inviteCalled = false;
+  const result = await resolveInvitedUserId({
+    email: 'existing@test.local',
+    redirectTo: 'caregiver://setup',
+    lookupExistingUserId: async () => 'existing-user-id',
+    inviteUser: async () => {
+      inviteCalled = true;
+      return { id: 'should-not-be-used' };
+    },
+  });
+
+  assertEquals(result, { userId: 'existing-user-id', invited: false });
+  assertEquals(inviteCalled, false, 'inviteUser must not be called when the user already exists');
+});
+
+Deno.test('new user: invites and returns the invited id', async () => {
+  let lookedUpEmail: string | undefined;
+  let invitedWith: { email: string; redirectTo: string } | undefined;
+
+  const result = await resolveInvitedUserId({
+    email: 'newcarer@test.local',
+    redirectTo: 'caregiver://setup',
+    lookupExistingUserId: async (email) => {
+      lookedUpEmail = email;
+      return null;
+    },
+    inviteUser: async (email, redirectTo) => {
+      invitedWith = { email, redirectTo };
+      return { id: 'invited-user-id' };
+    },
+  });
+
+  assertEquals(result, { userId: 'invited-user-id', invited: true });
+  assertEquals(lookedUpEmail, 'newcarer@test.local');
+  assertEquals(invitedWith, { email: 'newcarer@test.local', redirectTo: 'caregiver://setup' });
+});
+
+Deno.test('lookup failure propagates instead of falling through to invite', async () => {
+  let inviteCalled = false;
+  let threw = false;
+  try {
+    await resolveInvitedUserId({
+      email: 'broken@test.local',
+      redirectTo: 'caregiver://setup',
+      lookupExistingUserId: async () => {
+        throw new Error('lookup boom');
+      },
+      inviteUser: async () => {
+        inviteCalled = true;
+        return { id: 'unused' };
+      },
+    });
+  } catch (err) {
+    threw = true;
+    assertEquals((err as Error).message, 'lookup boom');
+  }
+  assertEquals(threw, true, 'expected lookup error to propagate');
+  assertEquals(inviteCalled, false);
 });

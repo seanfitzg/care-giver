@@ -13,6 +13,8 @@
     "supabase:stop": "supabase stop",
     "supabase:clear-recipient": "supabase db query --local --file supabase/clear-recipient.sql",
     "supabase:seed-remote": "supabase db query --linked --file supabase/seed.sql",
+    "supabase:reset-all-local": "node scripts/reset-all-data.js --local",
+    "supabase:reset-all-remote": "node scripts/reset-all-data.js --linked",
     "test:db": "supabase test db",
     "test:functions": "deno test --allow-env --allow-net --config supabase/functions/deno.json supabase/functions/",
     "test": "run-s test:db test:functions",

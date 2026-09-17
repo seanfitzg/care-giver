@@ -2,11 +2,35 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 
 const NATIVE_REDIRECT = 'caregiver://setup';
 
+// Distinguishes an existing-user lookup failure (our DB/RPC, a server fault)
+// from an inviteUserByEmail rejection (bad input, a client fault) so the
+// handler can map each to the right HTTP status.
+class LookupFailedError extends Error {}
+
 function buildAllowlist(): string[] {
   const allowlist = [NATIVE_REDIRECT];
   const webOrigin = Deno.env.get('INVITE_WEB_ORIGIN');
   if (webOrigin) allowlist.push(webOrigin);
   return allowlist;
+}
+
+// Decides whether to reuse an existing User or send a fresh invite. Pulled
+// out as its own seam so the branching can be unit tested without a live
+// Supabase instance — lookupExistingUserId/inviteUser are the only things
+// that touch the network.
+export async function resolveInvitedUserId(params: {
+  email: string;
+  redirectTo: string;
+  lookupExistingUserId: (email: string) => Promise<string | null>;
+  inviteUser: (email: string, redirectTo: string) => Promise<{ id: string }>;
+}): Promise<{ userId: string; invited: boolean }> {
+  const existingUserId = await params.lookupExistingUserId(params.email);
+  if (existingUserId) {
+    return { userId: existingUserId, invited: false };
+  }
+
+  const invitedUser = await params.inviteUser(params.email, params.redirectTo);
+  return { userId: invitedUser.id, invited: true };
 }
 
 export async function handler(req: Request): Promise<Response> {
@@ -65,34 +89,56 @@ export async function handler(req: Request): Promise<Response> {
     return json({ error: 'Forbidden: caller is not an admin for this care recipient' }, 403);
   }
 
-  // Send the invite email via Supabase Auth admin API.
-  const { data: inviteData, error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(
-    email,
-    { redirectTo },
-  );
+  // If a User already exists for this email, reuse it instead of inviting —
+  // inviteUserByEmail errors on an email that already has an account.
+  const lookupExistingUserId = async (lookupEmail: string): Promise<string | null> => {
+    const { data, error } = await adminClient.rpc('get_user_id_by_email', {
+      p_email: lookupEmail,
+    });
+    if (error) throw new LookupFailedError(error.message);
+    return (data as string | null) ?? null;
+  };
 
-  if (inviteError) {
-    return json({ error: inviteError.message }, 400);
+  const inviteUser = async (inviteEmail: string, inviteRedirectTo: string) => {
+    const { data, error } = await adminClient.auth.admin.inviteUserByEmail(inviteEmail, {
+      redirectTo: inviteRedirectTo,
+    });
+    if (error) throw error;
+    return data.user;
+  };
+
+  let userId: string;
+  let invited: boolean;
+  try {
+    const resolved = await resolveInvitedUserId({
+      email,
+      redirectTo,
+      lookupExistingUserId,
+      inviteUser,
+    });
+    userId = resolved.userId;
+    invited = resolved.invited;
+  } catch (err) {
+    if (err instanceof LookupFailedError) {
+      return json({ error: `Failed to check for existing user: ${err.message}` }, 500);
+    }
+    return json({ error: err instanceof Error ? err.message : String(err) }, 400);
   }
 
-  const invitedUserId = inviteData.user.id;
-
-  // Assign the role. Use upsert to handle re-invites gracefully.
+  // Assign the role. Use upsert to handle re-invites and existing users gracefully.
   const { error: roleInsertError } = await adminClient
     .from('user_roles')
     .upsert(
-      { user_id: invitedUserId, care_recipient_id, role },
+      { user_id: userId, care_recipient_id, role },
       { onConflict: 'user_id,care_recipient_id' },
     );
 
   if (roleInsertError) {
-    return json(
-      { error: `User invited but role assignment failed: ${roleInsertError.message}` },
-      500,
-    );
+    const action = invited ? 'User invited' : 'Existing user found';
+    return json({ error: `${action} but role assignment failed: ${roleInsertError.message}` }, 500);
   }
 
-  return json({ success: true, user_id: invitedUserId });
+  return json({ success: true, user_id: userId });
 }
 
 function json(body: unknown, status = 200) {

@@ -7,20 +7,35 @@ Multi-tenant care coordination app for people with complex medical needs, used b
 ### People & Roles
 
 **Care Recipient**:
-The person receiving care (e.g. a child or adult with complex needs). The root tenant — all data is scoped to them.
-_Avoid_: Patient, client, user
+The person receiving care (e.g. a child or adult with complex needs). The root tenant — all data is scoped to them. The set of Users holding a Role on a Care Recipient is informally its "care team," but that's descriptive language only, not a separate entity — it's just the join of Role assignments scoped to this Care Recipient's id.
+_Avoid_: Patient, client, user, team (as a standalone noun for the tenant/scope itself — say "create a new Care Recipient," not "create a new team")
+
+**User**:
+The authenticated identity — currently one email/password login; other sign-in methods may exist in future. A User may hold zero, one, or several Roles, each independently scoped to a different Care Recipient: the same User can be Admin for one Care Recipient and Carer for another. A User comes into existence via either Sign Up or Invite.
+_Avoid_: Account, member
+
+**Role**:
+The permission level — Admin, Senior Carer, or Carer — a User holds for one specific Care Recipient. Assigned per (User, Care Recipient) pair, never globally.
 
 **Admin**:
-A user with full control over a care recipient's schedule, team, and settings. Typically the parent or primary carer.
+A Role granting full control over a Care Recipient's schedule, team, and settings. Typically the parent or primary carer.
 _Avoid_: Owner, parent
 
 **Senior Carer**:
-A user who can manage the schedule and invite others, but cannot change team roles.
+A Role that can manage the schedule and invite others, but cannot change team roles.
 _Avoid_: Lead carer, supervisor
 
 **Carer**:
-A user who records care events but cannot change the schedule or team.
+A Role that records care events but cannot change the schedule or team.
 _Avoid_: Staff, worker, helper
+
+**Sign Up**:
+Self-serve creation of a User (email, password, display name) with no Role on any Care Recipient yet. A signed-up User lands in a pending state and either creates their own new Care Recipient (becoming its Admin) or waits to be Invited to an existing one.
+_Avoid_: Register, create account
+
+**Invite**:
+An existing Admin or Senior Carer granting a Role on their Care Recipient to an email address. Creates the User if that email has none yet, or adds a Role assignment to their existing User if it does. Distinct from Sign Up: Invite always targets a specific Care Recipient; Sign Up never does.
+_Avoid_: Register (for this specifically — Register is ambiguous between Sign Up and Invite)
 
 ### Care Events
 
@@ -105,3 +120,5 @@ An event log entry (or nutrition session) created via a bulk catch-up rather tha
 ## Flagged ambiguities
 
 - "feeding" was used throughout the original PRD and early migrations — resolved: **Nutrition** is the canonical term for all food/formula delivery.
+- "team" was used loosely (including in this file's own earlier Admin/Senior Carer/Carer definitions) to mean the tenant/scope itself — resolved: **Care Recipient** is the canonical term for that; "team"/"care team" survives only as descriptive language for "the Users with a Role on a Care Recipient," never as a thing you create or reference independently.
+- "user" was used to mean both the authenticated identity and a role-holder on a specific Care Recipient, which broke down once a single identity could hold different Roles on different Care Recipients — resolved: **User** is the identity; **Role** is the (User, Care Recipient)-scoped permission level.
