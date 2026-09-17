@@ -78,6 +78,8 @@ When asked for recommendations, research, ideas, or design discussions, save the
 
 When the user says 'implement issue #N', start implementing immediately after a brief plan — do not first verify whether the issue is already done or run extensive exploration. Trust the user's request.
 
+Before writing any code: `git fetch origin master` and pull the latest, then create a new branch off it for the ticket (e.g. `feat/issue-108-short-description`). Do not commit ticket work onto whatever branch happens to be currently checked out — it may be a stale or already-merged branch left over from prior work.
+
 ## Platform Conventions
 
 - The user works across multiple machines (Windows and Mac) and this changes over time — do NOT assume a fixed OS. Check the `Platform:` field in the environment info at the start of each session and use matching shell syntax: PowerShell (`$env:VAR="value"`) on Windows (`win32`), bash/zsh `export` on Mac/Linux (`darwin`/`linux`).
@@ -87,6 +89,10 @@ When the user says 'implement issue #N', start implementing immediately after a 
 ## Git & PR Workflow
 
 - Use `gh pr create --title "..." --body-file /tmp/pr-body.md`. Never pass `--body` and `--body-file` together (it hangs on stdin). Verify `gh auth status` before starting any issue work.
+
+## Issue Conventions
+
+- A parent issue that has sub-issues tracking pieces of it (e.g. a feature split into per-platform tickets) is an **epic** — apply the `epic` label to it via `gh issue edit <N> --add-label epic` when creating or identifying one. This makes it stand out in the issue list at a glance, separate from its title's `feat:`/`fix:`/`chore:` prefix, which stays unchanged.
 
 ## Definition of Done
 
