@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Key constraints (non-negotiable):**
 
 - Online-only — no offline support
-- Invite-only onboarding — no self-registration
+- Invite-only for joining an _existing_ Care Recipient — Roles are never self-service. Account creation itself, and starting a _brand-new_ Care Recipient, are self-serve (Sign Up).
 - Supabase RLS is the primary multi-tenancy isolation mechanism — must be airtight
 - Consult `PRD.md` before implementing any feature
 

@@ -1,19 +1,38 @@
 'use client';
 
 import { useEffect, useState, useActionState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { setPassword } from '@/app/actions/auth';
 
+const CONFIRMATION_COPY = {
+  signup: {
+    noCode: 'No confirmation code found. Please check your confirmation email.',
+    retry: 'Please try signing up again.',
+    loading: 'Confirming your account…',
+  },
+  invite: {
+    noCode: 'No invite code found. Please check your invite email.',
+    retry: 'Please request a new invite from your care coordinator.',
+    loading: 'Verifying your invite…',
+  },
+} as const;
+
 export default function SetupContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  // Captured once at mount — window.history.replaceState below strips the
+  // query string without going through Next's router, so re-reading
+  // searchParams later isn't reliable.
+  const [isSignupConfirmation] = useState(() => searchParams.get('type') === 'signup');
+  const copy = isSignupConfirmation ? CONFIRMATION_COPY.signup : CONFIRMATION_COPY.invite;
   const [exchanged, setExchanged] = useState(false);
   const [exchangeError, setExchangeError] = useState<string | null>(null);
   const [state, action, pending] = useActionState(setPassword, undefined);
 
   useEffect(() => {
     const code = searchParams.get('code');
-    const fakeError = code ? null : 'No invite code found. Please check your invite email.';
+    const fakeError = code ? null : copy.noCode;
     const exchange = code
       ? createClient().auth.exchangeCodeForSession(code)
       : Promise.resolve({ data: null, error: { message: fakeError! } as Error });
@@ -26,21 +45,27 @@ export default function SetupContent() {
         window.history.replaceState({}, '', '/setup');
       }
     });
-  }, [searchParams]);
+  }, [searchParams, copy.noCode]);
+
+  // A signed-up User already set their password at sign-up time — this link
+  // only needs to finish establishing the session, then route into the app.
+  useEffect(() => {
+    if (exchanged && isSignupConfirmation) {
+      router.replace('/');
+    }
+  }, [exchanged, isSignupConfirmation, router]);
 
   if (exchangeError) {
     return (
       <div className="w-full max-w-sm space-y-2 text-center">
         <p className="text-sm text-red-600">{exchangeError}</p>
-        <p className="text-sm text-neutral-500">
-          Please request a new invite from your care coordinator.
-        </p>
+        <p className="text-sm text-neutral-500">{copy.retry}</p>
       </div>
     );
   }
 
-  if (!exchanged) {
-    return <p className="text-sm text-neutral-500">Verifying your invite…</p>;
+  if (!exchanged || isSignupConfirmation) {
+    return <p className="text-sm text-neutral-500">{copy.loading}</p>;
   }
 
   return (
