@@ -3,7 +3,7 @@ import { Session, User } from '@supabase/supabase-js';
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type UserRole = 'admin' | 'senior_carer' | 'carer';
+export type UserRole = 'admin' | 'senior_carer' | 'carer';
 
 type PatientAssignment = {
   careRecipientId: string;
