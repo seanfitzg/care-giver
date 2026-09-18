@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getActivePatient } from '@/lib/patients';
+import { requireActivePatient } from '@/lib/patients';
 import TodayTimeline from './components/TodayTimeline';
 
 export default async function HomePage() {
@@ -10,17 +10,8 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { activePatient } = await getActivePatient(user.id);
-  const careRecipientId = activePatient?.careRecipientId;
-
-  if (!careRecipientId) {
-    return (
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">Today</h1>
-        <p className="mt-2 text-sm text-neutral-500">No care recipient assigned to your account.</p>
-      </div>
-    );
-  }
+  const activePatient = await requireActivePatient(user.id);
+  const careRecipientId = activePatient.careRecipientId;
 
   const now = new Date();
   const todayDow = now.getDay();

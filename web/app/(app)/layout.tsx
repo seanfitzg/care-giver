@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getActivePatient } from '@/lib/patients';
+import { requireActivePatient } from '@/lib/patients';
 import AppShell from './components/AppShell';
 
 function calcAge(dob: string): number {
@@ -24,14 +24,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login');
 
-  const { activePatient } = await getActivePatient(user.id);
-  const dob = activePatient?.careRecipientDateOfBirth;
+  const activePatient = await requireActivePatient(user.id);
+  const dob = activePatient.careRecipientDateOfBirth;
 
   return (
     <AppShell
       email={user.email ?? ''}
-      role={activePatient?.role ?? 'carer'}
-      careRecipientName={activePatient?.careRecipientName ?? ''}
+      role={activePatient.role}
+      careRecipientName={activePatient.careRecipientName ?? ''}
       careRecipientAge={dob ? calcAge(dob) : null}
     >
       {children}
