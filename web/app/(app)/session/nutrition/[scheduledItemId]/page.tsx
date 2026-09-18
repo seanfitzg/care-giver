@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActivePatient } from '@/lib/patients';
 import NutritionSessionRunner from './NutritionSessionRunner';
 
 export default async function NutritionSessionPage({
@@ -15,13 +16,8 @@ export default async function NutritionSessionPage({
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('care_recipient_id')
-    .eq('user_id', user.id)
-    .single();
-
-  const careRecipientId = roleData?.care_recipient_id;
+  const { activePatient } = await getActivePatient(user.id);
+  const careRecipientId = activePatient?.careRecipientId;
   if (!careRecipientId) notFound();
 
   const { data: scheduledItem } = await supabase

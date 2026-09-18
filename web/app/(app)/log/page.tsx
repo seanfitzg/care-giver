@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActivePatient } from '@/lib/patients';
 import LogTable from './LogTable';
 import { LOG_ENTRY_COLUMNS, PAGE_SIZE, type LogEntry } from './types';
 
@@ -10,13 +11,8 @@ export default async function LogPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role, care_recipient_id')
-    .eq('user_id', user.id)
-    .single();
-
-  const careRecipientId = roleData?.care_recipient_id;
+  const { activePatient } = await getActivePatient(user.id);
+  const careRecipientId = activePatient?.careRecipientId;
 
   if (!careRecipientId) {
     return (

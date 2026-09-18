@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActivePatient } from '@/lib/patients';
 import ScheduleTable from './ScheduleTable';
 import { SCHEDULED_ITEM_COLUMNS } from './types';
 
@@ -10,14 +11,9 @@ export default async function SchedulePage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role, care_recipient_id')
-    .eq('user_id', user.id)
-    .single();
-
-  const careRecipientId = roleData?.care_recipient_id;
-  const canManage = roleData?.role === 'admin' || roleData?.role === 'senior_carer';
+  const { activePatient } = await getActivePatient(user.id);
+  const careRecipientId = activePatient?.careRecipientId;
+  const canManage = activePatient?.role === 'admin' || activePatient?.role === 'senior_carer';
 
   if (!careRecipientId) {
     return (
