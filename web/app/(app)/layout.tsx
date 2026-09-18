@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActivePatient } from '@/lib/patients';
 import AppShell from './components/AppShell';
 
 function calcAge(dob: string): number {
@@ -23,23 +24,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login');
 
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role, care_recipients(name, date_of_birth)')
-    .eq('user_id', user.id)
-    .single();
-
-  const role = roleData?.role ?? 'carer';
-  const recipient = Array.isArray(roleData?.care_recipients)
-    ? roleData.care_recipients[0]
-    : roleData?.care_recipients;
+  const { activePatient } = await getActivePatient(user.id);
+  const dob = activePatient?.careRecipientDateOfBirth;
 
   return (
     <AppShell
       email={user.email ?? ''}
-      role={role}
-      careRecipientName={recipient?.name ?? ''}
-      careRecipientAge={recipient?.date_of_birth ? calcAge(recipient.date_of_birth) : null}
+      role={activePatient?.role ?? 'carer'}
+      careRecipientName={activePatient?.careRecipientName ?? ''}
+      careRecipientAge={dob ? calcAge(dob) : null}
     >
       {children}
     </AppShell>

@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { getActivePatient } from '@/lib/patients';
 import AsNeededMedicationsTable from './AsNeededMedicationsTable';
 import CarerTable from './CarerTable';
 import type { CarerRow } from './types';
@@ -12,16 +13,12 @@ export default async function AdminPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: roleData } = await supabase
-    .from('user_roles')
-    .select('role, care_recipient_id')
-    .eq('user_id', user.id)
-    .single();
+  const { activePatient } = await getActivePatient(user.id);
 
-  if (roleData?.role !== 'admin' && roleData?.role !== 'senior_carer') redirect('/');
+  if (activePatient?.role !== 'admin' && activePatient?.role !== 'senior_carer') redirect('/');
 
-  const careRecipientId = roleData.care_recipient_id;
-  const currentUserRole = roleData.role;
+  const careRecipientId = activePatient.careRecipientId;
+  const currentUserRole = activePatient.role;
 
   const [carersResult, medicationsResult] = await Promise.all([
     supabase.rpc('get_carers_with_emails', {
