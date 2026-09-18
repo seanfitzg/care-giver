@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getActivePatient } from '@/lib/patients';
+import { requireActivePatient } from '@/lib/patients';
 import AsNeededMedicationsTable from './AsNeededMedicationsTable';
 import CarerTable from './CarerTable';
 import type { CarerRow } from './types';
@@ -13,9 +13,8 @@ export default async function AdminPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { activePatient } = await getActivePatient(user.id);
-
-  if (activePatient?.role !== 'admin' && activePatient?.role !== 'senior_carer') redirect('/');
+  const activePatient = await requireActivePatient(user.id);
+  if (activePatient.role !== 'admin' && activePatient.role !== 'senior_carer') redirect('/');
 
   const careRecipientId = activePatient.careRecipientId;
   const currentUserRole = activePatient.role;

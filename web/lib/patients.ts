@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
 
@@ -61,3 +62,13 @@ export const getActivePatient = cache(async (userId: string) => {
   const storedId = cookieStore.get(ACTIVE_PATIENT_COOKIE)?.value;
   return { allPatients, activePatient: resolveActivePatient(allPatients, storedId) };
 });
+
+// Resolves the active patient or redirects to /pending or /picker, whichever
+// applies. Every (app)/ route calls this independently (not just the shared
+// layout) since a shared layout isn't guaranteed to re-run on every
+// client-side navigation between its sibling pages.
+export async function requireActivePatient(userId: string): Promise<PatientAssignment> {
+  const { allPatients, activePatient } = await getActivePatient(userId);
+  if (!activePatient) redirect(allPatients.length === 0 ? '/pending' : '/picker');
+  return activePatient;
+}
