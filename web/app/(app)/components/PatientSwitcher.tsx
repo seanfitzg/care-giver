@@ -22,7 +22,6 @@ export default function PatientSwitcher({
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const containerRef = useRef<HTMLDivElement>(null);
-  const canSwitch = patients.length > 1;
 
   useEffect(() => {
     if (!open) return;
@@ -47,10 +46,10 @@ export default function PatientSwitcher({
     <div ref={containerRef} style={{ position: 'relative', marginTop: 14 }}>
       <button
         type="button"
-        onClick={() => canSwitch && !isPending && setOpen((isOpen) => !isOpen)}
+        onClick={() => !isPending && setOpen((isOpen) => !isOpen)}
         disabled={isPending}
-        aria-haspopup={canSwitch ? 'listbox' : undefined}
-        aria-expanded={canSwitch ? open : undefined}
+        aria-haspopup="listbox"
+        aria-expanded={open}
         aria-busy={isPending}
         style={{
           display: 'flex',
@@ -60,7 +59,7 @@ export default function PatientSwitcher({
           background: 'none',
           border: 'none',
           padding: 0,
-          cursor: canSwitch && !isPending ? 'pointer' : 'default',
+          cursor: isPending ? 'default' : 'pointer',
           textAlign: 'left',
           opacity: isPending ? 0.6 : 1,
         }}
@@ -97,7 +96,7 @@ export default function PatientSwitcher({
             <div style={{ fontSize: 11, color: '#6b7280' }}>Age {activePatientAge}</div>
           )}
         </div>
-        {canSwitch && <Icon name="chevron-down" size={14} color="#9ca3af" />}
+        <Icon name="chevron-down" size={14} color="#9ca3af" />
       </button>
 
       {open && (
