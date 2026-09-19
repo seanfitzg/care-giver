@@ -72,6 +72,7 @@ export default function Icon({ name, size = 18, color = 'currentColor' }: IconPr
         <path d="M256 144v112l72 48" />
       </>
     ),
+    'chevron-down': <path d="M128 192l128 128 128-128" />,
   };
 
   return <svg {...common}>{paths[name] ?? null}</svg>;

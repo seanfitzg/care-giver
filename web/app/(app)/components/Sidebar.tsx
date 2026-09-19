@@ -3,7 +3,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logout } from '@/app/actions/auth';
+import type { PatientAssignment } from '@/lib/patients';
+import { roleLabel } from '@/lib/roleLabel';
 import Icon from './Icon';
+import PatientSwitcher from './PatientSwitcher';
 
 const NAV = [
   { href: '/', label: 'Today', icon: 'today' },
@@ -16,15 +19,11 @@ interface SidebarProps {
   isSeniorCarer: boolean;
   email: string;
   role: string;
+  patients: PatientAssignment[];
+  activePatientId: string;
   careRecipientName: string;
   careRecipientAge: number | null;
   onClose: () => void;
-}
-
-function roleLabel(role: string) {
-  if (role === 'admin') return 'Admin';
-  if (role === 'senior_carer') return 'Senior Carer';
-  return 'Carer';
 }
 
 function initials(email: string) {
@@ -38,6 +37,8 @@ export default function Sidebar({
   isSeniorCarer,
   email,
   role,
+  patients,
+  activePatientId,
   careRecipientName,
   careRecipientAge,
   onClose,
@@ -86,40 +87,12 @@ export default function Sidebar({
           care-giver
         </div>
         {careRecipientName && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14 }}>
-            <div
-              style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
-                background: '#eff6ff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 15,
-                flexShrink: 0,
-              }}
-            >
-              🧒
-            </div>
-            <div style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#111827',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                }}
-              >
-                {careRecipientName}
-              </div>
-              {careRecipientAge !== null && (
-                <div style={{ fontSize: 11, color: '#6b7280' }}>Age {careRecipientAge}</div>
-              )}
-            </div>
-          </div>
+          <PatientSwitcher
+            patients={patients}
+            activePatientId={activePatientId}
+            activePatientName={careRecipientName}
+            activePatientAge={careRecipientAge}
+          />
         )}
       </div>
 
