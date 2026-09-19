@@ -8,11 +8,7 @@ export interface CarerRow {
   last_sign_in_at: string | null;
 }
 
-export function roleLabel(role: string): string {
-  if (role === 'admin') return 'Admin';
-  if (role === 'senior_carer') return 'Senior Carer';
-  return 'Carer';
-}
+export { roleLabel } from '@/lib/roleLabel';
 
 export function formatLastSignIn(iso: string | null): string {
   if (!iso) return 'Never';

@@ -1,13 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getActivePatient } from '@/lib/patients';
+import { roleLabel } from '@/lib/roleLabel';
 import { selectActivePatient } from '@/app/actions/patients';
-
-function roleLabel(role: string): string {
-  if (role === 'admin') return 'Admin';
-  if (role === 'senior_carer') return 'Senior Carer';
-  return 'Carer';
-}
 
 export default async function PatientPickerPage() {
   const supabase = await createClient();

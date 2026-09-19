@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import type { PatientAssignment } from '@/lib/patients';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 
 interface AppShellProps {
   email: string;
   role: string;
+  patients: PatientAssignment[];
+  activePatientId: string;
   careRecipientName: string;
   careRecipientAge: number | null;
   children: React.ReactNode;
@@ -15,6 +18,8 @@ interface AppShellProps {
 export default function AppShell({
   email,
   role,
+  patients,
+  activePatientId,
   careRecipientName,
   careRecipientAge,
   children,
@@ -46,6 +51,8 @@ export default function AppShell({
           isSeniorCarer={isSeniorCarer}
           email={email}
           role={role}
+          patients={patients}
+          activePatientId={activePatientId}
           careRecipientName={careRecipientName}
           careRecipientAge={careRecipientAge}
           onClose={() => setSidebarOpen(false)}
