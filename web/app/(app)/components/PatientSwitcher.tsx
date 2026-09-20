@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { switchActivePatient } from '@/app/actions/patients';
 import type { PatientAssignment } from '@/lib/patients';
@@ -11,6 +12,7 @@ interface PatientSwitcherProps {
   activePatientId: string;
   activePatientName: string;
   activePatientAge: number | null;
+  onNavigate?: () => void;
 }
 
 export default function PatientSwitcher({
@@ -18,6 +20,7 @@ export default function PatientSwitcher({
   activePatientId,
   activePatientName,
   activePatientAge,
+  onNavigate,
 }: PatientSwitcherProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -142,6 +145,27 @@ export default function PatientSwitcher({
               </button>
             );
           })}
+
+          <Link
+            href="/picker"
+            onClick={() => {
+              setOpen(false);
+              onNavigate?.();
+            }}
+            style={{
+              display: 'block',
+              width: '100%',
+              textAlign: 'left',
+              padding: '9px 12px',
+              borderTop: '1px solid #e5e7eb',
+              textDecoration: 'none',
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: '#2563eb',
+            }}
+          >
+            Manage teams
+          </Link>
         </div>
       )}
     </div>
