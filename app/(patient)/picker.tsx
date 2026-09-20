@@ -1,10 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/lib/roles';
 
 export default function PatientPickerScreen() {
-  const { allPatients, setActivePatient, signOut } = useAuth();
+  const { allPatients, careRecipientId, setActivePatient, signOut } = useAuth();
   const router = useRouter();
 
   const handleSelect = async (careRecipientId: string) => {
@@ -21,17 +22,35 @@ export default function PatientPickerScreen() {
         data={allPatients}
         keyExtractor={(item) => item.careRecipientId}
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <Pressable
-            style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-            onPress={() => handleSelect(item.careRecipientId)}
-            accessibilityRole="button"
-          >
-            <Text style={styles.cardName}>{item.careRecipientName ?? 'Unnamed patient'}</Text>
-            <Text style={styles.cardRole}>{ROLE_LABELS[item.role]}</Text>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const isActive = item.careRecipientId === careRecipientId;
+          return (
+            <Pressable
+              style={({ pressed }) => [
+                styles.card,
+                isActive && styles.cardActive,
+                pressed && styles.cardPressed,
+              ]}
+              onPress={() => handleSelect(item.careRecipientId)}
+              accessibilityRole="button"
+            >
+              <View style={styles.cardText}>
+                <Text style={styles.cardName}>{item.careRecipientName ?? 'Unnamed patient'}</Text>
+                <Text style={styles.cardRole}>{ROLE_LABELS[item.role]}</Text>
+              </View>
+              {isActive && <Ionicons name="checkmark" size={20} color="#2563eb" />}
+            </Pressable>
+          );
+        }}
       />
+
+      <Pressable
+        style={styles.startTeam}
+        onPress={() => router.push('/(setup)/create-recipient')}
+        accessibilityRole="button"
+      >
+        <Text style={styles.startTeamText}>Start a new team</Text>
+      </Pressable>
 
       <Pressable onPress={signOut} style={styles.signOut} accessibilityRole="button">
         <Text style={styles.signOutText}>Not you? Sign out</Text>
@@ -63,8 +82,13 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#fff',
     borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
     paddingVertical: 16,
     paddingHorizontal: 16,
     shadowColor: '#000',
@@ -73,9 +97,14 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 1,
   },
+  cardActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
   cardPressed: {
     backgroundColor: '#f3f4f6',
   },
+  cardText: { flex: 1 },
   cardName: {
     fontSize: 16,
     fontWeight: '600',
@@ -85,6 +114,15 @@ const styles = StyleSheet.create({
   cardRole: {
     fontSize: 13,
     color: '#6b7280',
+  },
+  startTeam: {
+    alignSelf: 'center',
+    paddingTop: 20,
+  },
+  startTeamText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   signOut: {
     alignSelf: 'center',

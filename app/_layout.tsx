@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 const queryClient = new QueryClient();
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { session, loading, allPatients, activePatient, isAdmin } = useAuth();
+  const { session, loading, allPatients, activePatient } = useAuth();
   const segments = useSegments() as string[];
   const router = useRouter();
 
@@ -41,14 +41,16 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // (setup)/create-recipient and (patient)/picker are also voluntary
+    // destinations once an active patient is set — reached from "Start a new
+    // team" / "Manage teams" inside the app — so they're exempt from the
+    // bounce-back-to-tabs redirect below that otherwise guards onboarding.
     if (inAuthGroup) {
       router.replace('/(tabs)');
-    } else if (inSetupGroup) {
-      router.replace(isAdmin ? ('/admin' as never) : '/(tabs)');
-    } else if (inPatientGroup) {
+    } else if (inPatientGroup && !onPickerScreen) {
       router.replace('/(tabs)');
     }
-  }, [session, loading, segments, router, allPatients, activePatient, isAdmin]);
+  }, [session, loading, segments, router, allPatients, activePatient]);
 
   if (loading) {
     return (
