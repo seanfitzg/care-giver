@@ -29,7 +29,7 @@ export default async function PatientPickerPage() {
               <input type="hidden" name="careRecipientId" value={patient.careRecipientId} />
               <button
                 type="submit"
-                className={`w-full rounded-md border px-4 py-3 text-left text-sm ${
+                className={`w-full cursor-pointer rounded-md border px-4 py-3 text-left text-sm ${
                   active
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-neutral-300 hover:border-neutral-500'
