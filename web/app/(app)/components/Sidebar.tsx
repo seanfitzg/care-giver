@@ -92,6 +92,7 @@ export default function Sidebar({
             activePatientId={activePatientId}
             activePatientName={careRecipientName}
             activePatientAge={careRecipientAge}
+            onNavigate={onClose}
           />
         )}
       </div>
