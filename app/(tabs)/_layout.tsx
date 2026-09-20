@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Link, Tabs } from 'expo-router';
+import { Link, Tabs, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { PatientSwitcherSheet } from '@/components/PatientSwitcherSheet';
@@ -22,11 +22,16 @@ export default function TabLayout() {
     signOut,
   } = useAuth();
   const [switcherVisible, setSwitcherVisible] = useState(false);
-  const canSwitch = allPatients.length > 1;
+  const router = useRouter();
 
   const handleSelectPatient = async (id: string) => {
     setSwitcherVisible(false);
     await setActivePatient(id);
+  };
+
+  const handleManageTeams = () => {
+    setSwitcherVisible(false);
+    router.push('/(patient)/picker');
   };
 
   const settingsHref = '/admin';
@@ -59,7 +64,6 @@ export default function TabLayout() {
             <Pressable
               style={{ alignItems: 'center' }}
               onPress={() => setSwitcherVisible(true)}
-              disabled={!canSwitch}
               accessibilityRole="button"
               accessibilityLabel="Switch patient"
             >
@@ -69,7 +73,7 @@ export default function TabLayout() {
               {careRecipientName ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 1 }}>
                   <Text style={{ fontSize: 12, color: '#6b7280' }}>{careRecipientName}</Text>
-                  {canSwitch ? <Ionicons name="chevron-down" size={12} color="#6b7280" /> : null}
+                  <Ionicons name="chevron-down" size={12} color="#6b7280" />
                 </View>
               ) : null}
             </Pressable>
@@ -109,6 +113,7 @@ export default function TabLayout() {
         patients={allPatients}
         activeCareRecipientId={careRecipientId}
         onSelect={handleSelectPatient}
+        onManageTeams={handleManageTeams}
         onDismiss={() => setSwitcherVisible(false)}
       />
     </>

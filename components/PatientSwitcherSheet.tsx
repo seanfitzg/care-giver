@@ -8,6 +8,7 @@ type Props = {
   patients: PatientAssignment[];
   activeCareRecipientId: string | null;
   onSelect: (careRecipientId: string) => void;
+  onManageTeams: () => void;
   onDismiss: () => void;
 };
 
@@ -16,6 +17,7 @@ export function PatientSwitcherSheet({
   patients,
   activeCareRecipientId,
   onSelect,
+  onManageTeams,
   onDismiss,
 }: Props) {
   return (
@@ -47,6 +49,14 @@ export function PatientSwitcherSheet({
               );
             })}
           </View>
+
+          <Pressable
+            style={({ pressed }) => [styles.manageTeamsRow, pressed && styles.rowPressed]}
+            onPress={onManageTeams}
+            accessibilityRole="button"
+          >
+            <Text style={styles.manageTeamsText}>Manage teams</Text>
+          </Pressable>
         </View>
       </View>
     </Modal>
@@ -98,4 +108,17 @@ const styles = StyleSheet.create({
   rowText: { flex: 1 },
   rowName: { fontSize: 15, fontWeight: '600', color: '#111827' },
   rowRole: { fontSize: 13, color: '#6b7280', marginTop: 2 },
+  manageTeamsRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    borderRadius: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginTop: 6,
+  },
+  manageTeamsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+  },
 });
