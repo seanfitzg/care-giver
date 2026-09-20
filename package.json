@@ -8,7 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "next:dev": "npm --prefix web run dev",
-    "dev:android-web": "run-p android next:dev",
+    "all": "run-p android next:dev",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "supabase:start": "supabase start",
