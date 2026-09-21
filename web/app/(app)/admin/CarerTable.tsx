@@ -130,7 +130,7 @@ export default function CarerTable({
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <th style={thStyle}>Email</th>
+              <th style={thStyle}>Name</th>
               <th style={thStyle}>Role</th>
               <th style={thStyle}>Last sign-in</th>
               <th style={thStyle}>Actions</th>
@@ -143,7 +143,16 @@ export default function CarerTable({
               const saving = savingUserId === carer.user_id;
               return (
                 <tr key={carer.user_id}>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{carer.email ?? carer.user_id}</td>
+                  <td style={{ ...tdStyle, fontWeight: 600 }}>
+                    {carer.name ?? carer.email ?? carer.user_id}
+                    {carer.email && (
+                      <div
+                        style={{ fontSize: 11.5, fontWeight: 400, color: '#6b7280', marginTop: 2 }}
+                      >
+                        {carer.email}
+                      </div>
+                    )}
+                  </td>
                   <td style={tdStyle}>
                     {canManage ? (
                       <select

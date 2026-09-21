@@ -3,7 +3,7 @@
 -- Requires: npx supabase db reset (seed data must be present)
 
 BEGIN;
-SELECT plan(5);
+SELECT plan(6);
 
 CREATE SCHEMA IF NOT EXISTS tests;
 GRANT USAGE ON SCHEMA tests TO authenticated, anon;
@@ -95,6 +95,12 @@ SELECT ok(
 SELECT lives_ok(
   'SELECT last_sign_in_at FROM carer_results',
   'last_sign_in_at column is present on get_carers_with_emails results'
+);
+
+SELECT is(
+  (SELECT name FROM carer_results WHERE email = 'user1@test.local'),
+  'Olivia Bennett',
+  'name resolves from raw_user_meta_data, not just the email fallback'
 );
 
 -- ============================================================
