@@ -36,15 +36,34 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO authenticated, anon;
 -- ============================================================
 -- Fixtures
 -- ============================================================
+-- seed.sql only creates auth.users rows (no care_recipient/user_roles —
+-- the app starts from zero patient assignments), so this file creates its
+-- own care_recipient and role assignments inline, scoped to this
+-- transaction (rolled back at the end).
 
 DO $$
+DECLARE
+  v_admin_id  uuid;
+  v_carer_id  uuid;
+  v_senior_id uuid;
+  v_cr_id     uuid;
 BEGIN
-  PERFORM set_config('tests.admin_id',
-    (SELECT id::text FROM auth.users WHERE email = 'admin@test.local'), false);
-  PERFORM set_config('tests.carer_id',
-    (SELECT id::text FROM auth.users WHERE email = 'carer@test.local'), false);
-  PERFORM set_config('tests.cr_id',
-    (SELECT id::text FROM care_recipients WHERE name = 'Oscar'), false);
+  SELECT id INTO v_admin_id  FROM auth.users WHERE email = 'user1@test.local';
+  SELECT id INTO v_carer_id  FROM auth.users WHERE email = 'user2@test.local';
+  SELECT id INTO v_senior_id FROM auth.users WHERE email = 'user3@test.local';
+
+  INSERT INTO care_recipients (name, date_of_birth)
+  VALUES ('Test Recipient', '2020-01-01')
+  RETURNING id INTO v_cr_id;
+
+  INSERT INTO user_roles (user_id, care_recipient_id, role) VALUES
+    (v_admin_id,  v_cr_id, 'admin'),
+    (v_carer_id,  v_cr_id, 'carer'),
+    (v_senior_id, v_cr_id, 'senior_carer');
+
+  PERFORM set_config('tests.admin_id', v_admin_id::text, false);
+  PERFORM set_config('tests.carer_id', v_carer_id::text, false);
+  PERFORM set_config('tests.cr_id',    v_cr_id::text,    false);
 END;
 $$;
 
@@ -69,8 +88,8 @@ SELECT ok(
 );
 
 SELECT ok(
-  EXISTS (SELECT 1 FROM carer_results WHERE email = 'admin@test.local'),
-  'admin@test.local appears in results with correct email'
+  EXISTS (SELECT 1 FROM carer_results WHERE email = 'user1@test.local'),
+  'user1@test.local appears in results with correct email'
 );
 
 SELECT lives_ok(

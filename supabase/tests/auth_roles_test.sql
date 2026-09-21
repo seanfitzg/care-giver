@@ -34,63 +34,43 @@ $$;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA tests TO authenticated, anon;
 
 -- ============================================================
--- Fixtures (from seed.sql)
+-- Fixtures
 -- ============================================================
+-- seed.sql only creates auth.users rows (no care_recipient/user_roles —
+-- the app starts from zero patient assignments), so this file creates its
+-- own care_recipient and role assignments inline, scoped to this
+-- transaction (rolled back at the end). Uses 4 of seed.sql's 5 test users;
+-- user5@test.local is left unassigned.
 
 DO $$
 DECLARE
-  v_admin_id   uuid;
-  v_carer_id   uuid;
-  v_senior_id  uuid;
-  v_cr_id      uuid;
+  v_admin_id        uuid;
+  v_carer_id        uuid;
+  v_senior_id       uuid;
+  v_second_admin_id uuid;
+  v_cr_id           uuid;
 BEGIN
-  SELECT id INTO v_admin_id  FROM auth.users WHERE email = 'admin@test.local';
-  SELECT id INTO v_carer_id  FROM auth.users WHERE email = 'carer@test.local';
-  SELECT id INTO v_senior_id FROM auth.users WHERE email = 'senior@test.local';
-  SELECT id INTO v_cr_id     FROM care_recipients WHERE name = 'Oscar';
+  SELECT id INTO v_admin_id        FROM auth.users WHERE email = 'user1@test.local';
+  SELECT id INTO v_carer_id        FROM auth.users WHERE email = 'user2@test.local';
+  SELECT id INTO v_senior_id       FROM auth.users WHERE email = 'user3@test.local';
+  SELECT id INTO v_second_admin_id FROM auth.users WHERE email = 'user4@test.local';
+
+  INSERT INTO care_recipients (name, date_of_birth)
+  VALUES ('Test Recipient', '2020-01-01')
+  RETURNING id INTO v_cr_id;
+
+  INSERT INTO user_roles (user_id, care_recipient_id, role) VALUES
+    (v_admin_id,  v_cr_id, 'admin'),
+    (v_carer_id,  v_cr_id, 'carer'),
+    (v_senior_id, v_cr_id, 'senior_carer'),
+    (v_second_admin_id, v_cr_id, 'admin');
 
   -- Store for use across test blocks.
-  PERFORM set_config('tests.admin_id',  v_admin_id::text,  false);
-  PERFORM set_config('tests.carer_id',  v_carer_id::text,  false);
-  PERFORM set_config('tests.senior_id', v_senior_id::text, false);
-  PERFORM set_config('tests.cr_id',     v_cr_id::text,     false);
-END;
-$$;
-
--- Second admin fixture for test 10 (admin-vs-admin protection). Inserted
--- here, before any tests.set_auth_user() call switches the session role to
--- 'authenticated', since inserting into auth.users requires the elevated
--- role this script runs as initially.
-DO $$
-DECLARE
-  v_second_admin_id uuid := '00000000-0000-0000-0000-000000000099';
-BEGIN
-  INSERT INTO auth.users (
-    id, instance_id, aud, role, email, encrypted_password,
-    email_confirmed_at, created_at, updated_at,
-    raw_app_meta_data, raw_user_meta_data,
-    is_super_admin, confirmation_token, recovery_token,
-    email_change_token_new, email_change
-  ) VALUES (
-    v_second_admin_id,
-    '00000000-0000-0000-0000-000000000000',
-    'authenticated', 'authenticated',
-    'second-admin@test.local',
-    crypt('password123', gen_salt('bf')),
-    now(), now(), now(),
-    '{"provider":"email","providers":["email"]}',
-    '{"name":"Second Admin"}',
-    false, '', '', '', ''
-  ) ON CONFLICT (id) DO NOTHING;
-
-  INSERT INTO user_roles (user_id, care_recipient_id, role)
-  VALUES (
-    v_second_admin_id,
-    (SELECT id FROM care_recipients WHERE name = 'Oscar'),
-    'admin'
-  ) ON CONFLICT DO NOTHING;
-
+  PERFORM set_config('tests.admin_id',        v_admin_id::text,        false);
+  PERFORM set_config('tests.carer_id',        v_carer_id::text,        false);
+  PERFORM set_config('tests.senior_id',       v_senior_id::text,       false);
   PERFORM set_config('tests.second_admin_id', v_second_admin_id::text, false);
+  PERFORM set_config('tests.cr_id',           v_cr_id::text,           false);
 END;
 $$;
 
@@ -105,7 +85,7 @@ SELECT ok(
       AND care_recipient_id = current_setting('tests.cr_id')::uuid
       AND role = 'admin'
   ),
-  'admin@test.local has admin role for Oscar'
+  'user1@test.local has admin role for the test recipient'
 );
 
 SELECT ok(
@@ -115,7 +95,7 @@ SELECT ok(
       AND care_recipient_id = current_setting('tests.cr_id')::uuid
       AND role = 'carer'
   ),
-  'carer@test.local has carer role for Oscar'
+  'user2@test.local has carer role for the test recipient'
 );
 
 SELECT ok(
@@ -125,7 +105,7 @@ SELECT ok(
       AND care_recipient_id = current_setting('tests.cr_id')::uuid
       AND role = 'senior_carer'
   ),
-  'senior@test.local has senior_carer role for Oscar'
+  'user3@test.local has senior_carer role for the test recipient'
 );
 
 -- ============================================================
@@ -137,8 +117,8 @@ SELECT tests.set_auth_user(current_setting('tests.admin_id')::uuid);
 SELECT is(
   (SELECT count(*)::int FROM user_roles
    WHERE care_recipient_id = current_setting('tests.cr_id')::uuid),
-  3,
-  'admin sees all 3 user_roles rows via RLS'
+  4,
+  'admin sees all 4 user_roles rows via RLS'
 );
 
 -- ============================================================
@@ -150,7 +130,7 @@ SELECT tests.set_auth_user(current_setting('tests.carer_id')::uuid);
 SELECT is(
   (SELECT count(*)::int FROM user_roles
    WHERE care_recipient_id = current_setting('tests.cr_id')::uuid),
-  3,
+  4,
   'carer also sees all user_roles rows via RLS'
 );
 

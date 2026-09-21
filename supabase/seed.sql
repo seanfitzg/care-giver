@@ -1,10 +1,16 @@
 -- Seed data for local development.
 -- Run via: npx supabase db reset
 --
--- Test accounts (password: "password123" for all):
---   admin@test.local  — admin role
---   carer@test.local  — carer role
---   senior@test.local — senior_carer role
+-- Test accounts (password: "password123" for all). No role or care_recipient
+-- assignment on any of them — the app should be exercised starting from
+-- zero patient assignments (picker/pending flow), not a pre-wired one. Tests
+-- that need a role/care_recipient fixture create it inline in their own
+-- transaction (see supabase/tests/*.sql).
+--   user1@test.local — Olivia Bennett
+--   user2@test.local — Marcus Chen
+--   user3@test.local — Priya Sharma
+--   user4@test.local — Liam Foster
+--   user5@test.local — Ava Torres
 
 -- ----------------------------------------------------------------
 -- Test users (inserted directly into auth schema for local dev)
@@ -22,33 +28,55 @@ INSERT INTO auth.users (
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000000',
     'authenticated', 'authenticated',
-    'admin@test.local',
+    'user1@test.local',
     crypt('password123', gen_salt('bf')),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}',
-    '{"name":"Admin User"}',
+    '{"name":"Olivia Bennett"}',
     false, '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000002',
     '00000000-0000-0000-0000-000000000000',
     'authenticated', 'authenticated',
-    'carer@test.local',
+    'user2@test.local',
     crypt('password123', gen_salt('bf')),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}',
-    '{"name":"Test Carer"}',
+    '{"name":"Marcus Chen"}',
     false, '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000003',
     '00000000-0000-0000-0000-000000000000',
     'authenticated', 'authenticated',
-    'senior@test.local',
+    'user3@test.local',
     crypt('password123', gen_salt('bf')),
     now(), now(), now(),
     '{"provider":"email","providers":["email"]}',
-    '{"name":"Senior Carer"}',
+    '{"name":"Priya Sharma"}',
+    false, '', '', '', ''
+  ),
+  (
+    '00000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'user4@test.local',
+    crypt('password123', gen_salt('bf')),
+    now(), now(), now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"name":"Liam Foster"}',
+    false, '', '', '', ''
+  ),
+  (
+    '00000000-0000-0000-0000-000000000005',
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'user5@test.local',
+    crypt('password123', gen_salt('bf')),
+    now(), now(), now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"name":"Ava Torres"}',
     false, '', '', '', ''
   )
 ON CONFLICT (id) DO NOTHING;
@@ -60,22 +88,36 @@ INSERT INTO auth.identities (
   (
     '00000000-0000-0000-0000-000000000001',
     '00000000-0000-0000-0000-000000000001',
-    'admin@test.local', 'email',
-    '{"sub":"00000000-0000-0000-0000-000000000001","email":"admin@test.local"}',
+    'user1@test.local', 'email',
+    '{"sub":"00000000-0000-0000-0000-000000000001","email":"user1@test.local"}',
     now(), now(), now()
   ),
   (
     '00000000-0000-0000-0000-000000000002',
     '00000000-0000-0000-0000-000000000002',
-    'carer@test.local', 'email',
-    '{"sub":"00000000-0000-0000-0000-000000000002","email":"carer@test.local"}',
+    'user2@test.local', 'email',
+    '{"sub":"00000000-0000-0000-0000-000000000002","email":"user2@test.local"}',
     now(), now(), now()
   ),
   (
     '00000000-0000-0000-0000-000000000003',
     '00000000-0000-0000-0000-000000000003',
-    'senior@test.local', 'email',
-    '{"sub":"00000000-0000-0000-0000-000000000003","email":"senior@test.local"}',
+    'user3@test.local', 'email',
+    '{"sub":"00000000-0000-0000-0000-000000000003","email":"user3@test.local"}',
+    now(), now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000004',
+    'user4@test.local', 'email',
+    '{"sub":"00000000-0000-0000-0000-000000000004","email":"user4@test.local"}',
+    now(), now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000005',
+    '00000000-0000-0000-0000-000000000005',
+    'user5@test.local', 'email',
+    '{"sub":"00000000-0000-0000-0000-000000000005","email":"user5@test.local"}',
     now(), now(), now()
   )
 ON CONFLICT (id) DO NOTHING;
