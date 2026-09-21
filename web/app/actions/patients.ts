@@ -55,6 +55,40 @@ export async function switchActivePatient(careRecipientId: string) {
   revalidatePath('/', 'layout');
 }
 
+// Deletes the caller's own user_roles row for the given Care Recipient
+// (leave). Relies on the user_roles_leave RLS policy to reject this for an
+// admin's own row — the UI already hides the "Leave" action for admins, this
+// is the defense-in-depth backstop.
+export async function leaveCareRecipient(careRecipientId: string): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  // .select('id') so a 0-row RLS-filtered delete (e.g. the leave policy
+  // rejecting an admin's own row) is distinguishable from success — a plain
+  // delete() returns no error at all when RLS matches zero rows.
+  const { data, error } = await supabase
+    .from('user_roles')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('care_recipient_id', careRecipientId)
+    .select('id');
+
+  if (error || !data || data.length === 0) {
+    return { error: 'Could not leave this team — please try again.' };
+  }
+
+  const cookieStore = await cookies();
+  if (cookieStore.get(ACTIVE_PATIENT_COOKIE)?.value === careRecipientId) {
+    cookieStore.delete(ACTIVE_PATIENT_COOKIE);
+  }
+
+  revalidatePath('/', 'layout');
+  return {};
+}
+
 export async function createCareRecipient(
   _state: { error?: string } | undefined,
   formData: FormData,
