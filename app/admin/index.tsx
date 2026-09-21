@@ -95,12 +95,18 @@ export default function AdminScreen() {
 
   const revokeMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
+      // .select('id') so a 0-row RLS-filtered delete (e.g. the admin-cannot-
+      // remove-another-admin policy) is distinguishable from success — a
+      // plain delete() returns no error when RLS matches zero rows.
+      const { data, error } = await supabase
         .from('user_roles')
         .delete()
         .eq('user_id', userId)
-        .eq('care_recipient_id', careRecipientId!);
+        .eq('care_recipient_id', careRecipientId!)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0)
+        throw new Error('Could not revoke access — please try again.');
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['carers', careRecipientId] }),
     onError: (err: Error) => Alert.alert('Revocation failed', err.message),
