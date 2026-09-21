@@ -1,16 +1,56 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '@/contexts/AuthContext';
+import { LeaveTeamConfirmSheet } from '@/components/LeaveTeamConfirmSheet';
+import { useAuth, type PatientAssignment } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 import { ROLE_LABELS } from '@/lib/roles';
 
 export default function PatientPickerScreen() {
-  const { allPatients, careRecipientId, setActivePatient, signOut } = useAuth();
+  const { allPatients, careRecipientId, setActivePatient, user, refresh, signOut } = useAuth();
   const router = useRouter();
+  const [leavingPatient, setLeavingPatient] = useState<PatientAssignment | null>(null);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
   const handleSelect = async (careRecipientId: string) => {
     await setActivePatient(careRecipientId);
     router.replace('/(tabs)');
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!leavingPatient) return;
+
+    if (!user) {
+      setLeaveError('Your session has expired. Please sign in again.');
+      return;
+    }
+
+    setIsLeaving(true);
+    setLeaveError(null);
+
+    const { error } = await supabase
+      .from('user_roles')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('care_recipient_id', leavingPatient.careRecipientId);
+
+    setIsLeaving(false);
+
+    if (error) {
+      setLeaveError('Could not leave this team. Please try again.');
+      return;
+    }
+
+    setLeavingPatient(null);
+    await refresh();
+  };
+
+  const closeLeaveModal = () => {
+    if (isLeaving) return;
+    setLeavingPatient(null);
+    setLeaveError(null);
   };
 
   return (
@@ -24,22 +64,36 @@ export default function PatientPickerScreen() {
         contentContainerStyle={styles.list}
         renderItem={({ item }) => {
           const isActive = item.careRecipientId === careRecipientId;
+          const canLeave = item.role !== 'admin';
+          const patientName = item.careRecipientName ?? 'Unnamed patient';
           return (
-            <Pressable
-              style={({ pressed }) => [
-                styles.card,
-                isActive && styles.cardActive,
-                pressed && styles.cardPressed,
-              ]}
-              onPress={() => handleSelect(item.careRecipientId)}
-              accessibilityRole="button"
-            >
-              <View style={styles.cardText}>
-                <Text style={styles.cardName}>{item.careRecipientName ?? 'Unnamed patient'}</Text>
-                <Text style={styles.cardRole}>{ROLE_LABELS[item.role]}</Text>
-              </View>
-              {isActive && <Ionicons name="checkmark" size={20} color="#2563eb" />}
-            </Pressable>
+            <View style={[styles.card, isActive && styles.cardActive]}>
+              <Pressable
+                style={({ pressed }) => [styles.cardSelect, pressed && styles.cardPressed]}
+                onPress={() => handleSelect(item.careRecipientId)}
+                accessibilityRole="button"
+              >
+                <View style={styles.cardText}>
+                  <Text style={styles.cardName}>{patientName}</Text>
+                  <Text style={styles.cardRole}>{ROLE_LABELS[item.role]}</Text>
+                </View>
+                {isActive && <Ionicons name="checkmark" size={20} color="#2563eb" />}
+              </Pressable>
+
+              {canLeave && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.leaveButton,
+                    pressed && styles.leaveButtonPressed,
+                  ]}
+                  onPress={() => setLeavingPatient(item)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Leave ${patientName}'s team`}
+                >
+                  <Text style={styles.leaveButtonText}>Leave</Text>
+                </Pressable>
+              )}
+            </View>
           );
         }}
       />
@@ -55,6 +109,15 @@ export default function PatientPickerScreen() {
       <Pressable onPress={signOut} style={styles.signOut} accessibilityRole="button">
         <Text style={styles.signOutText}>Not you? Sign out</Text>
       </Pressable>
+
+      <LeaveTeamConfirmSheet
+        patient={leavingPatient}
+        visible={!!leavingPatient}
+        isLoading={isLeaving}
+        error={leaveError}
+        onConfirm={handleConfirmLeave}
+        onDismiss={closeLeaveModal}
+      />
     </View>
   );
 }
@@ -82,15 +145,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
     borderColor: 'transparent',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.04,
@@ -100,6 +159,13 @@ const styles = StyleSheet.create({
   cardActive: {
     borderColor: '#2563eb',
     backgroundColor: '#eff6ff',
+  },
+  cardSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
   },
   cardPressed: {
     backgroundColor: '#f3f4f6',
@@ -114,6 +180,20 @@ const styles = StyleSheet.create({
   cardRole: {
     fontSize: 13,
     color: '#6b7280',
+  },
+  leaveButton: {
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  leaveButtonPressed: {
+    backgroundColor: '#fef2f2',
+  },
+  leaveButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#dc2626',
   },
   startTeam: {
     alignSelf: 'center',
