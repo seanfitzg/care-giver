@@ -2,8 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getActivePatient } from '@/lib/patients';
-import { roleLabel } from '@/lib/roleLabel';
-import { selectActivePatient } from '@/app/actions/patients';
+import PickerList from './PickerList';
 
 export default async function PatientPickerPage() {
   const supabase = await createClient();
@@ -21,29 +20,10 @@ export default async function PatientPickerPage() {
         <p className="text-sm text-neutral-500">Select who you&apos;re caring for right now.</p>
       </div>
 
-      <div className="space-y-2">
-        {allPatients.map((patient) => {
-          const active = patient.careRecipientId === activePatient?.careRecipientId;
-          return (
-            <form key={patient.careRecipientId} action={selectActivePatient}>
-              <input type="hidden" name="careRecipientId" value={patient.careRecipientId} />
-              <button
-                type="submit"
-                className={`w-full cursor-pointer rounded-md border px-4 py-3 text-left text-sm ${
-                  active
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-neutral-300 hover:border-neutral-500'
-                }`}
-              >
-                <div className="font-medium text-neutral-900">
-                  {patient.careRecipientName ?? 'Unnamed patient'}
-                </div>
-                <div className="text-xs text-neutral-500">{roleLabel(patient.role)}</div>
-              </button>
-            </form>
-          );
-        })}
-      </div>
+      <PickerList
+        initialPatients={allPatients}
+        activePatientId={activePatient?.careRecipientId ?? null}
+      />
 
       <Link
         href="/create-recipient"
