@@ -41,6 +41,12 @@ export default function InviteCarerModal({ careRecipientId, onClose, onInvited }
       data: { session },
     } = await supabase.auth.getSession();
 
+    if (!session) {
+      setSubmitting(false);
+      setError('Your session could not be found — try refreshing the page and signing in again.');
+      return;
+    }
+
     const { data, error: invokeError } = await supabase.functions.invoke('invite-carer', {
       body: {
         email: trimmed,
@@ -48,7 +54,7 @@ export default function InviteCarerModal({ careRecipientId, onClose, onInvited }
         care_recipient_id: careRecipientId,
         redirect_to: `${window.location.origin}/setup`,
       },
-      headers: { Authorization: `Bearer ${session!.access_token}` },
+      headers: { Authorization: `Bearer ${session.access_token}` },
     });
 
     const body = data as { success?: boolean; user_id?: string; error?: string } | null;
@@ -64,6 +70,7 @@ export default function InviteCarerModal({ careRecipientId, onClose, onInvited }
       user_id: body.user_id,
       role,
       email: trimmed,
+      name: trimmed,
       last_sign_in_at: null,
     });
     onClose();
@@ -75,7 +82,8 @@ export default function InviteCarerModal({ careRecipientId, onClose, onInvited }
         Invite a carer
       </h2>
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 18 }}>
-        They&rsquo;ll receive an email with a secure setup link.
+        If they don&rsquo;t already have an account, they&rsquo;ll receive an email with a secure
+        setup link. If they do, they&rsquo;re added to this care team right away.
       </p>
 
       <label style={fieldLabelStyle}>
