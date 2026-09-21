@@ -22,13 +22,17 @@ export default function RevokeCarerModal({ carer, careRecipientId, onClose, onRe
     setSubmitting(true);
     setError(null);
     const supabase = createClient();
-    const { error: deleteError } = await supabase
+    // .select('id') so a 0-row RLS-filtered delete (e.g. the admin-cannot-
+    // remove-another-admin policy) is distinguishable from success — a
+    // plain delete() returns no error when RLS matches zero rows.
+    const { data, error: deleteError } = await supabase
       .from('user_roles')
       .delete()
       .eq('user_id', carer.user_id)
-      .eq('care_recipient_id', careRecipientId);
+      .eq('care_recipient_id', careRecipientId)
+      .select('id');
 
-    if (deleteError) {
+    if (deleteError || !data || data.length === 0) {
       setSubmitting(false);
       setError('Could not revoke access — please try again.');
       return;

@@ -30,15 +30,19 @@ export default function PatientPickerScreen() {
     setIsLeaving(true);
     setLeaveError(null);
 
-    const { error } = await supabase
+    // .select('id') so a 0-row RLS-filtered delete (the leave policy
+    // rejecting an admin's own row) is distinguishable from success — a
+    // plain delete() returns no error when RLS matches zero rows.
+    const { data, error } = await supabase
       .from('user_roles')
       .delete()
       .eq('user_id', user.id)
-      .eq('care_recipient_id', leavingPatient.careRecipientId);
+      .eq('care_recipient_id', leavingPatient.careRecipientId)
+      .select('id');
 
     setIsLeaving(false);
 
-    if (error) {
+    if (error || !data || data.length === 0) {
       setLeaveError('Could not leave this team. Please try again.');
       return;
     }
