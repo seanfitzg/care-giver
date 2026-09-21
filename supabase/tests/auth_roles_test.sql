@@ -3,7 +3,7 @@
 -- Requires: npx supabase db reset (seed data must be present)
 
 BEGIN;
-SELECT plan(12);
+SELECT plan(15);
 
 CREATE SCHEMA IF NOT EXISTS tests;
 GRANT USAGE ON SCHEMA tests TO authenticated, anon;
@@ -54,6 +54,43 @@ BEGIN
   PERFORM set_config('tests.carer_id',  v_carer_id::text,  false);
   PERFORM set_config('tests.senior_id', v_senior_id::text, false);
   PERFORM set_config('tests.cr_id',     v_cr_id::text,     false);
+END;
+$$;
+
+-- Second admin fixture for test 10 (admin-vs-admin protection). Inserted
+-- here, before any tests.set_auth_user() call switches the session role to
+-- 'authenticated', since inserting into auth.users requires the elevated
+-- role this script runs as initially.
+DO $$
+DECLARE
+  v_second_admin_id uuid := '00000000-0000-0000-0000-000000000099';
+BEGIN
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data,
+    is_super_admin, confirmation_token, recovery_token,
+    email_change_token_new, email_change
+  ) VALUES (
+    v_second_admin_id,
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated',
+    'second-admin@test.local',
+    crypt('password123', gen_salt('bf')),
+    now(), now(), now(),
+    '{"provider":"email","providers":["email"]}',
+    '{"name":"Second Admin"}',
+    false, '', '', '', ''
+  ) ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO user_roles (user_id, care_recipient_id, role)
+  VALUES (
+    v_second_admin_id,
+    (SELECT id FROM care_recipients WHERE name = 'Oscar'),
+    'admin'
+  ) ON CONFLICT DO NOTHING;
+
+  PERFORM set_config('tests.second_admin_id', v_second_admin_id::text, false);
 END;
 $$;
 
@@ -225,6 +262,57 @@ SELECT is(
      AND care_recipient_id = current_setting('tests.cr_id')::uuid),
   1,
   'admin cannot delete their own role (lockout prevention)'
+);
+
+-- ============================================================
+-- 9. Leave: a non-admin can delete their own role (senior_carer)
+-- ============================================================
+
+SELECT tests.set_auth_user(current_setting('tests.senior_id')::uuid);
+
+DELETE FROM user_roles
+  WHERE user_id = current_setting('tests.senior_id')::uuid
+    AND care_recipient_id = current_setting('tests.cr_id')::uuid;
+
+SELECT is(
+  (SELECT count(*)::int FROM user_roles
+   WHERE user_id = current_setting('tests.senior_id')::uuid
+     AND care_recipient_id = current_setting('tests.cr_id')::uuid),
+  0,
+  'senior_carer can leave by deleting their own user_roles row'
+);
+
+-- ============================================================
+-- 10. Admin cannot demote or delete another admin's role
+-- ============================================================
+
+SELECT tests.set_auth_user(current_setting('tests.admin_id')::uuid);
+
+-- Attempt to demote the second admin first — if this succeeded it would
+-- reopen the delete path closed below (demote, then delete as a non-admin).
+UPDATE user_roles
+  SET role = 'carer'
+  WHERE user_id = current_setting('tests.second_admin_id')::uuid
+    AND care_recipient_id = current_setting('tests.cr_id')::uuid;
+
+SELECT is(
+  (SELECT role::text FROM user_roles
+   WHERE user_id = current_setting('tests.second_admin_id')::uuid
+     AND care_recipient_id = current_setting('tests.cr_id')::uuid),
+  'admin',
+  'admin cannot demote another admin''s role (RLS UPDATE blocked)'
+);
+
+DELETE FROM user_roles
+  WHERE user_id = current_setting('tests.second_admin_id')::uuid
+    AND care_recipient_id = current_setting('tests.cr_id')::uuid;
+
+SELECT is(
+  (SELECT count(*)::int FROM user_roles
+   WHERE user_id = current_setting('tests.second_admin_id')::uuid
+     AND care_recipient_id = current_setting('tests.cr_id')::uuid),
+  1,
+  'admin cannot delete another admin''s user_roles row'
 );
 
 SELECT tests.clear_auth();
