@@ -83,10 +83,10 @@ export default function BulkCatchUpModal({
   return (
     <Modal onClose={onClose} labelledBy={titleId} maxWidth={480}>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#4338ca', marginBottom: 4 }}>
-        Bulk catch-up
+        Mark all as done
       </div>
       <h2 id={titleId} style={{ fontSize: 19, fontWeight: 700, color: '#111827', margin: 0 }}>
-        Mark {items.length} {items.length === 1 ? 'item' : 'items'} as complete
+        Mark {items.length} {items.length === 1 ? 'item' : 'items'} as done
       </h2>
       <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4, marginBottom: 14 }}>
         One note applies to all selected items.
@@ -148,7 +148,7 @@ export default function BulkCatchUpModal({
           disabled={submitting}
           style={{ ...primaryBtnStyle('#4338ca'), opacity: submitting ? 0.7 : 1 }}
         >
-          {submitting ? 'Recording…' : 'Mark all selected as complete'}
+          {submitting ? 'Recording…' : 'Mark as done'}
         </button>
       </div>
     </Modal>

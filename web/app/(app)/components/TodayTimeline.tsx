@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import BulkCatchUpModal from './BulkCatchUpModal';
+import Icon from './Icon';
 import { primaryBtnStyle, secondaryBtnStyle } from './modalStyles';
 import PRNMedicationModal from './PRNMedicationModal';
 import RecordItemModal from './RecordItemModal';
+import ScheduledItemDetailModal from './ScheduledItemDetailModal';
 import {
   formatTimeOfDay,
   typeLabel,
@@ -23,6 +25,12 @@ interface TimelineItem {
   status: ItemStatus;
 }
 
+const TYPE_CONFIG: Record<ScheduledItem['type'], { icon: string; color: string; bg: string }> = {
+  medication_scheduled: { icon: 'medkit', color: '#2563eb', bg: '#eff6ff' },
+  nutrition: { icon: 'water', color: '#d97706', bg: '#fffbeb' },
+  activity: { icon: 'walk', color: '#16a34a', bg: '#f0fdf4' },
+};
+
 interface Props {
   careRecipientId: string;
   carerId: string;
@@ -34,13 +42,33 @@ interface Props {
   todayLabel: string;
 }
 
+// overdue and missed share a tier — both are incomplete and both are swept
+// up by "Mark all as done" — so they sit together above Upcoming.
 const STATUS_SORT: Record<ItemStatus, number> = {
   overdue: 0,
+  missed: 0,
   pending: 1,
   completed: 2,
-  missed: 2,
   skipped: 2,
 };
+
+function SectionHeader({ title }: { title: string }) {
+  return (
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 600,
+        color: '#6b7280',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginTop: 8,
+        marginBottom: 2,
+      }}
+    >
+      {title}
+    </div>
+  );
+}
 
 const STATUS_COLORS: Record<
   ItemStatus,
@@ -96,6 +124,17 @@ function computeStatus(item: ScheduledItem, event: EventEntry | null, now: Date)
   return item.time_of_day <= utcTime ? 'overdue' : 'pending';
 }
 
+// Same default horizon as the RN app's FUTURE_HOURS, kept in sync manually
+// since web and native don't share code.
+const UPCOMING_PREVIEW_HOURS = 6;
+
+function timeOfDayToDate(timeOfDay: string, now: Date): Date {
+  const [h, m, s] = timeOfDay.split(':').map(Number);
+  const d = new Date(now);
+  d.setUTCHours(h, m, s || 0, 0);
+  return d;
+}
+
 function formatOccurredAt(iso: string): string {
   const d = new Date(iso);
   return (
@@ -124,9 +163,14 @@ export default function TodayTimeline({
   const router = useRouter();
   const [events, setEvents] = useState<EventEntry[]>(initialEvents);
   const [activeItem, setActiveItem] = useState<ScheduledItem | null>(null);
+  const [detailItem, setDetailItem] = useState<{
+    item: ScheduledItem;
+    status: ItemStatus;
+  } | null>(null);
   const [prnModalOpen, setPrnModalOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false);
   const selectAllRef = useRef<HTMLInputElement>(null);
   // Initialise from the server timestamp so server and client render identically.
   const [now, setNow] = useState(() => new Date(serverTimeISO));
@@ -233,24 +277,62 @@ export default function TodayTimeline({
     return a.scheduledItem.time_of_day.localeCompare(b.scheduledItem.time_of_day);
   });
 
-  const overdueItems = items.filter((i) => i.status === 'overdue').map((i) => i.scheduledItem);
-  const overduCount = overdueItems.length;
+  // Section header boundaries within the sorted list — items is already
+  // grouped by STATUS_SORT tier, so the first index of each tier is where
+  // its header belongs.
+  const firstUpcomingIndex = items.findIndex((i) => i.status === 'pending');
+  const firstEarlierIndex = items.findIndex(
+    (i) => i.status === 'completed' || i.status === 'skipped',
+  );
+
+  // By default, "Upcoming" is capped to the next few hours so the list stays
+  // short; "View all" reveals the rest of today's scheduled items.
+  const upcomingCutoff = new Date(now.getTime() + UPCOMING_PREVIEW_HOURS * 3_600_000);
+  const totalUpcomingCount = items.filter((i) => i.status === 'pending').length;
+  const upcomingPreviewCount = items.filter(
+    (i) =>
+      i.status === 'pending' && timeOfDayToDate(i.scheduledItem.time_of_day, now) <= upcomingCutoff,
+  ).length;
+  const hasMoreUpcoming = totalUpcomingCount > upcomingPreviewCount;
+  let lastUpcomingIndex = -1;
+  items.forEach((i, idx) => {
+    if (i.status === 'pending') lastUpcomingIndex = idx;
+  });
+
+  function isUpcomingHidden(entry: TimelineItem): boolean {
+    return (
+      !upcomingExpanded &&
+      entry.status === 'pending' &&
+      timeOfDayToDate(entry.scheduledItem.time_of_day, now) > upcomingCutoff
+    );
+  }
+
+  // "Mark all as done" sweeps up both overdue items (window still open) and
+  // items already flipped to missed — both are incomplete and both can be
+  // caught up retroactively; only completed/skipped items are excluded.
+  const actionableItems = items
+    .filter((i) => i.status === 'overdue' || i.status === 'missed')
+    .map((i) => i.scheduledItem);
+  const actionableCount = actionableItems.length;
 
   // Deriving from `items` (rather than trusting selectedIds directly) drops
-  // stale selections for items that stopped being overdue, e.g. recorded
+  // stale selections for items that stopped being actionable, e.g. recorded
   // elsewhere and picked up via the realtime subscription.
-  const selectedOverdueItems = overdueItems.filter((item) => selectedIds.has(item.id));
-  const allOverdueSelected =
-    overdueItems.length > 0 && selectedOverdueItems.length === overdueItems.length;
+  const selectedActionableItems = actionableItems.filter((item) => selectedIds.has(item.id));
+  const allActionableSelected =
+    actionableItems.length > 0 && selectedActionableItems.length === actionableItems.length;
 
   useEffect(() => {
     if (selectAllRef.current) {
-      selectAllRef.current.indeterminate = selectedOverdueItems.length > 0 && !allOverdueSelected;
+      selectAllRef.current.indeterminate =
+        selectedActionableItems.length > 0 && !allActionableSelected;
     }
-  }, [selectedOverdueItems.length, allOverdueSelected]);
+  }, [selectedActionableItems.length, allActionableSelected]);
 
   function toggleSelectAll() {
-    setSelectedIds(allOverdueSelected ? new Set() : new Set(overdueItems.map((item) => item.id)));
+    setSelectedIds(
+      allActionableSelected ? new Set() : new Set(actionableItems.map((item) => item.id)),
+    );
   }
 
   return (
@@ -276,7 +358,7 @@ export default function TodayTimeline({
           <p style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{todayLabel}</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {overduCount > 0 && (
+          {actionableCount > 0 && (
             <div
               style={{
                 display: 'flex',
@@ -299,7 +381,7 @@ export default function TodayTimeline({
                   background: '#dc2626',
                 }}
               />
-              {overduCount} overdue
+              {actionableCount} to catch up
             </div>
           )}
           <button
@@ -324,7 +406,7 @@ export default function TodayTimeline({
         </div>
       </div>
 
-      {overduCount > 0 && (
+      {actionableCount > 0 && (
         <div
           style={{
             display: 'flex',
@@ -353,19 +435,17 @@ export default function TodayTimeline({
             <input
               ref={selectAllRef}
               type="checkbox"
-              checked={allOverdueSelected}
+              checked={allActionableSelected}
               onChange={toggleSelectAll}
-              aria-label={
-                allOverdueSelected ? 'Deselect all overdue items' : 'Select all overdue items'
-              }
+              aria-label={allActionableSelected ? 'Deselect all items' : 'Select all items'}
               style={{ width: 16, height: 16, cursor: 'pointer' }}
             />
-            {selectedOverdueItems.length > 0
-              ? `${selectedOverdueItems.length} selected`
-              : 'Select all overdue'}
+            {selectedActionableItems.length > 0
+              ? `${selectedActionableItems.length} selected`
+              : 'Select all'}
           </label>
-          {selectedOverdueItems.length > 0 && (
-            <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {selectedActionableItems.length > 0 && (
               <button
                 type="button"
                 onClick={() => setSelectedIds(new Set())}
@@ -373,15 +453,20 @@ export default function TodayTimeline({
               >
                 Clear
               </button>
-              <button
-                type="button"
-                onClick={() => setBulkModalOpen(true)}
-                style={{ ...primaryBtnStyle('#4338ca'), flex: 'none', padding: '7px 14px' }}
-              >
-                Mark all selected as complete
-              </button>
-            </div>
-          )}
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedActionableItems.length === 0) {
+                  setSelectedIds(new Set(actionableItems.map((item) => item.id)));
+                }
+                setBulkModalOpen(true);
+              }}
+              style={{ ...primaryBtnStyle('#4338ca'), flex: 'none', padding: '7px 14px' }}
+            >
+              {selectedActionableItems.length > 0 ? 'Mark selected as done' : 'Mark all as done'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -403,124 +488,184 @@ export default function TodayTimeline({
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {items.map(({ scheduledItem: item, event, status }) => {
+          {items.map((entry, idx) => {
+            const { scheduledItem: item, event, status } = entry;
             const colors = STATUS_COLORS[status];
             const carer = event?.carer_id ? carerMap.get(event.carer_id) : null;
             const recordable = status === 'pending' || status === 'overdue';
+            const hidden = isUpcomingHidden(entry);
 
             function handleActivate() {
-              if (item.type === 'nutrition') {
-                router.push(`/session/nutrition/${item.id}`);
+              if (recordable) {
+                if (item.type === 'nutrition') {
+                  router.push(`/session/nutrition/${item.id}`);
+                } else {
+                  setActiveItem(item);
+                }
               } else {
-                setActiveItem(item);
+                setDetailItem({ item, status });
               }
             }
 
             return (
-              <div
-                key={item.id}
-                role={recordable ? 'button' : undefined}
-                tabIndex={recordable ? 0 : undefined}
-                onClick={recordable ? handleActivate : undefined}
-                onKeyDown={
-                  recordable
-                    ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleActivate();
-                        }
+              <Fragment key={item.id}>
+                {idx === firstUpcomingIndex && <SectionHeader title="Upcoming" />}
+                {idx === firstEarlierIndex && <SectionHeader title="Earlier today" />}
+                {!hidden && (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={handleActivate}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleActivate();
                       }
-                    : undefined
-                }
-                style={{
-                  background: colors.bg,
-                  border: '1px solid #e5e7eb',
-                  borderLeft: `4px solid ${colors.border}`,
-                  borderRadius: 10,
-                  padding: '14px 18px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 16,
-                  cursor: recordable ? 'pointer' : 'default',
-                }}
-              >
-                {status === 'overdue' ? (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                    style={{ flexShrink: 0, paddingTop: 4 }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => toggleSelected(item.id)}
-                      aria-label={`Select ${item.name} for bulk catch-up`}
-                      style={{ width: 16, height: 16, cursor: 'pointer' }}
-                    />
-                  </div>
-                ) : (
-                  <div style={{ flexShrink: 0, width: 16 }} />
-                )}
-                <div style={{ flexShrink: 0, minWidth: 50, paddingTop: 2 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: '#374151' }}>
-                    {formatTimeOfDay(item.time_of_day)}
-                  </div>
-                </div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div
+                    }}
                     style={{
+                      background: colors.bg,
+                      border: '1px solid #e5e7eb',
+                      borderLeft: `4px solid ${colors.border}`,
+                      borderRadius: 10,
+                      padding: '14px 18px',
                       display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      flexWrap: 'wrap',
-                      marginBottom: status === 'completed' || status === 'missed' ? 6 : 0,
+                      alignItems: 'flex-start',
+                      gap: 16,
+                      cursor: 'pointer',
                     }}
                   >
-                    <span style={{ fontSize: 15, fontWeight: 600, color: colors.nameColor }}>
-                      {item.name}
-                    </span>
-                    <span
+                    {status === 'overdue' || status === 'missed' ? (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        style={{ flexShrink: 0, paddingTop: 4 }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => toggleSelected(item.id)}
+                          aria-label={`Select ${item.name} to mark as done`}
+                          style={{ width: 16, height: 16, cursor: 'pointer' }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ flexShrink: 0, width: 16 }} />
+                    )}
+                    <div
                       style={{
-                        fontSize: 11,
-                        fontWeight: 500,
-                        padding: '2px 7px',
-                        borderRadius: 20,
-                        background: '#f3f4f6',
-                        color: '#6b7280',
                         flexShrink: 0,
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: TYPE_CONFIG[item.type].bg,
                       }}
                     >
-                      {typeLabel(item.type)}
-                    </span>
-                  </div>
-
-                  {status === 'completed' && event && (
-                    <div style={{ fontSize: 12, color: '#6b7280' }}>
-                      Recorded by {carer ?? 'a carer'} at {formatOccurredAt(event.occurred_at)}
+                      <Icon
+                        name={TYPE_CONFIG[item.type].icon}
+                        size={16}
+                        color={TYPE_CONFIG[item.type].color}
+                      />
                     </div>
-                  )}
-                  {status === 'missed' && (
-                    <div style={{ fontSize: 12, color: '#dc2626' }}>Not recorded in time</div>
-                  )}
-                </div>
+                    <div style={{ flexShrink: 0, minWidth: 50, paddingTop: 2 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 600, color: '#374151' }}>
+                        {formatTimeOfDay(item.time_of_day)}
+                      </div>
+                    </div>
 
-                <div style={{ flexShrink: 0 }}>
-                  <span
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginBottom: status === 'completed' || status === 'missed' ? 6 : 0,
+                        }}
+                      >
+                        <span style={{ fontSize: 15, fontWeight: 600, color: colors.nameColor }}>
+                          {item.name}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 500,
+                            padding: '2px 7px',
+                            borderRadius: 20,
+                            background: '#f3f4f6',
+                            color: '#6b7280',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {typeLabel(item.type)}
+                        </span>
+                        {item.type === 'medication_scheduled' && item.is_compulsory && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              padding: '2px 7px',
+                              borderRadius: 20,
+                              background: '#fee2e2',
+                              color: '#dc2626',
+                              flexShrink: 0,
+                            }}
+                          >
+                            Compulsory
+                          </span>
+                        )}
+                      </div>
+
+                      {status === 'completed' && event && (
+                        <div style={{ fontSize: 12, color: '#6b7280' }}>
+                          Recorded by {carer ?? 'a carer'} at {formatOccurredAt(event.occurred_at)}
+                        </div>
+                      )}
+                      {status === 'missed' && (
+                        <div style={{ fontSize: 12, color: '#dc2626' }}>Not recorded in time</div>
+                      )}
+                    </div>
+
+                    <div style={{ flexShrink: 0 }}>
+                      <span
+                        style={{
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          padding: '4px 10px',
+                          borderRadius: 20,
+                          background: colors.labelBg,
+                          color: colors.labelText,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {statusLabel(status)}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {idx === lastUpcomingIndex && hasMoreUpcoming && (
+                  <button
+                    type="button"
+                    onClick={() => setUpcomingExpanded((v) => !v)}
                     style={{
-                      fontSize: 11.5,
+                      alignSelf: 'center',
+                      background: 'none',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontSize: 13,
                       fontWeight: 600,
-                      padding: '4px 10px',
-                      borderRadius: 20,
-                      background: colors.labelBg,
-                      color: colors.labelText,
-                      whiteSpace: 'nowrap',
+                      padding: '10px 0',
+                      cursor: 'pointer',
                     }}
                   >
-                    {statusLabel(status)}
-                  </span>
-                </div>
-              </div>
+                    {upcomingExpanded
+                      ? 'Show less'
+                      : `View all ${totalUpcomingCount} upcoming today`}
+                  </button>
+                )}
+              </Fragment>
             );
           })}
         </div>
@@ -536,6 +681,16 @@ export default function TodayTimeline({
         />
       )}
 
+      {detailItem && (
+        <ScheduledItemDetailModal
+          item={detailItem.item}
+          statusLabel={statusLabel(detailItem.status)}
+          statusColor={STATUS_COLORS[detailItem.status].labelText}
+          statusBg={STATUS_COLORS[detailItem.status].labelBg}
+          onClose={() => setDetailItem(null)}
+        />
+      )}
+
       {prnModalOpen && (
         <PRNMedicationModal
           medications={asNeededMedications}
@@ -546,9 +701,9 @@ export default function TodayTimeline({
         />
       )}
 
-      {bulkModalOpen && selectedOverdueItems.length > 0 && (
+      {bulkModalOpen && selectedActionableItems.length > 0 && (
         <BulkCatchUpModal
-          items={selectedOverdueItems}
+          items={selectedActionableItems}
           careRecipientId={careRecipientId}
           carerId={carerId}
           onClose={() => setBulkModalOpen(false)}

@@ -15,6 +15,7 @@ export function useBulkCatchUp() {
   return useMutation({
     mutationFn: async (vars: BulkCatchUpVars) => {
       const { careRecipientId, carerId, items, notes } = vars;
+      const occurredAt = new Date().toISOString();
 
       const nutritionItems = items.filter((i) => i.type === 'nutrition');
       const nonNutritionItems = items.filter((i) => i.type !== 'nutrition');
@@ -24,7 +25,7 @@ export function useBulkCatchUp() {
         event_type: item.type,
         scheduled_item_id: item.scheduledItemId,
         carer_id: carerId,
-        occurred_at: item.scheduledAt.toISOString(),
+        occurred_at: occurredAt,
         status: 'completed' as const,
         bulk_confirmed: true,
         notes: notes || null,
@@ -35,8 +36,8 @@ export function useBulkCatchUp() {
           care_recipient_id: careRecipientId,
           scheduled_item_id: item.scheduledItemId,
           carer_id: carerId,
-          started_at: item.scheduledAt.toISOString(),
-          completed_at: item.scheduledAt.toISOString(),
+          started_at: occurredAt,
+          completed_at: occurredAt,
           all_consumed: null,
           bulk_confirmed: true,
           notes: notes || null,
@@ -48,7 +49,7 @@ export function useBulkCatchUp() {
           event_type: item.type,
           scheduled_item_id: item.scheduledItemId,
           carer_id: carerId,
-          occurred_at: item.scheduledAt.toISOString(),
+          occurred_at: occurredAt,
           status: 'completed' as const,
           bulk_confirmed: true,
           notes: notes || null,
@@ -65,10 +66,11 @@ export function useBulkCatchUp() {
       const previous = qc.getQueryData<FetchedTimeline>(['timeline', vars.careRecipientId]);
       qc.setQueryData<FetchedTimeline>(['timeline', vars.careRecipientId], (old) => {
         if (!old) return old;
+        const occurredAt = new Date().toISOString();
         const optimisticEvents = vars.items.map((item, i) => ({
           id: `optimistic-bulk-${Date.now()}-${i}`,
           scheduled_item_id: item.scheduledItemId,
-          occurred_at: item.scheduledAt.toISOString(),
+          occurred_at: occurredAt,
           status: 'completed' as const,
           carer_id: vars.carerId,
         }));

@@ -73,6 +73,21 @@ export default function Icon({ name, size = 18, color = 'currentColor' }: IconPr
       </>
     ),
     'chevron-down': <path d="M128 192l128 128 128-128" />,
+    medkit: (
+      <>
+        <rect x="64" y="176" width="384" height="240" rx="32" />
+        <path d="M192 176v-32a32 32 0 0132-32h64a32 32 0 0132 32v32" />
+        <line x1="256" y1="240" x2="256" y2="336" />
+        <line x1="208" y1="288" x2="304" y2="288" />
+      </>
+    ),
+    water: <path d="M256 48c72 96 128 176 128 248a128 128 0 01-256 0c0-72 56-152 128-248z" />,
+    walk: (
+      <>
+        <circle cx="256" cy="96" r="32" fill={color} stroke="none" />
+        <path d="M256 144l-48 96 32 48-16 112M256 144l48 80-16 64 64 96M208 240l-96 32" />
+      </>
+    ),
   };
 
   return <svg {...common}>{paths[name] ?? null}</svg>;

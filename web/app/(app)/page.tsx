@@ -24,7 +24,7 @@ export default async function HomePage() {
     supabase
       .from('scheduled_items')
       .select(
-        'id, type, name, time_of_day, overdue_window_minutes, days_of_week, description, nutrition_type, bolus_rest_minutes',
+        'id, type, name, time_of_day, overdue_window_minutes, is_compulsory, days_of_week, description, nutrition_type, bolus_rest_minutes',
       )
       .eq('care_recipient_id', careRecipientId)
       .not('time_of_day', 'is', null)
