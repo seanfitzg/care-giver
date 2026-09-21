@@ -72,6 +72,21 @@ export default function RecordItemModal({
         Scheduled for {formatTimeOfDay(item.time_of_day)}
       </p>
 
+      {item.description && (
+        <div
+          style={{
+            background: '#f9fafb',
+            borderRadius: 8,
+            padding: 10,
+            marginBottom: 16,
+          }}
+        >
+          <p style={{ fontSize: 13.5, lineHeight: 1.5, color: '#374151', margin: 0 }}>
+            {item.description}
+          </p>
+        </div>
+      )}
+
       <label style={{ fontSize: 13, fontWeight: 500, color: '#374151' }}>
         Notes (optional)
         <textarea

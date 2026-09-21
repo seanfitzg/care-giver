@@ -6,6 +6,7 @@ export interface ScheduledItem {
   name: string;
   time_of_day: string;
   overdue_window_minutes: number;
+  is_compulsory: boolean;
   days_of_week: number[] | null;
   description: string | null;
   nutrition_type: NutritionType | null;

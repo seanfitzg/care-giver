@@ -24,7 +24,7 @@ import { useRecordMedication } from '@/hooks/useRecordMedication';
 import { useSkipActivity } from '@/hooks/useSkipActivity';
 import { useRecordPRNMedication } from '@/hooks/useRecordPRNMedication';
 import { usePRNMedications } from '@/hooks/usePRNMedications';
-import { useTimeline, PAST_HOURS, FUTURE_HOURS } from '@/hooks/useTimeline';
+import { useTimeline, FUTURE_HOURS } from '@/hooks/useTimeline';
 import type { ItemStatus, ItemType, TimelineItem } from '@/hooks/useTimeline';
 
 const TYPE_CONFIG: Record<
@@ -35,6 +35,8 @@ const TYPE_CONFIG: Record<
   nutrition: { icon: 'water-outline', color: '#d97706', bg: '#fffbeb', label: 'Nutrition' },
   activity: { icon: 'walk-outline', color: '#16a34a', bg: '#f0fdf4', label: 'Activity' },
 };
+
+const EARLIER_TODAY_PREVIEW_COUNT = 3;
 
 const STATUS_CONFIG: Record<ItemStatus, { label: string; color: string; bg: string }> = {
   overdue: { label: 'Overdue', color: '#dc2626', bg: '#fef2f2' },
@@ -238,12 +240,21 @@ export default function TodayScreen() {
   const [detailItem, setDetailItem] = useState<TimelineItem | null>(null);
   const [prnSheetVisible, setPRNSheetVisible] = useState(false);
   const [catchUpSheetVisible, setCatchUpSheetVisible] = useState(false);
+  const [earlierTodayExpanded, setEarlierTodayExpanded] = useState(false);
+  const [upcomingExpanded, setUpcomingExpanded] = useState(false);
 
-  const overdue = items.filter((i) => i.status === 'overdue');
-  const earlierToday = items.filter(
-    (i) => i.status === 'done' || i.status === 'missed' || i.status === 'skipped',
-  );
+  // "Mark all as done" sweeps up both overdue items (window still open) and
+  // items already flipped to missed — both are incomplete and both can be
+  // caught up retroactively; only completed/skipped items are excluded.
+  const actionable = items.filter((i) => i.status === 'overdue' || i.status === 'missed');
+  const earlierToday = items.filter((i) => i.status === 'done' || i.status === 'skipped');
   const upcoming = items.filter((i) => i.status === 'upcoming');
+
+  // By default "Upcoming" is capped to the next FUTURE_HOURS so the list
+  // stays short; "View all" reveals the rest of today's scheduled items.
+  const upcomingCutoff = new Date(Date.now() + FUTURE_HOURS * 3_600_000);
+  const upcomingPreview = upcoming.filter((i) => i.scheduledAt <= upcomingCutoff);
+  const upcomingVisible = upcomingExpanded ? upcoming : upcomingPreview;
 
   function handleItemTap(item: TimelineItem) {
     if (item.type === 'nutrition') {
@@ -301,10 +312,10 @@ export default function TodayScreen() {
   function handleBulkCatchUp(notes: string) {
     if (!careRecipientId || !user) return;
     bulkCatchUp(
-      { careRecipientId, carerId: user.id, items: overdue, notes: notes.trim() || undefined },
+      { careRecipientId, carerId: user.id, items: actionable, notes: notes.trim() || undefined },
       {
         onSuccess: () => setCatchUpSheetVisible(false),
-        onError: () => Alert.alert('Error', 'Failed to catch up. Please try again.'),
+        onError: () => Alert.alert('Error', 'Failed to mark all as done. Please try again.'),
       },
     );
   }
@@ -347,25 +358,24 @@ export default function TodayScreen() {
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} />}
       >
         {/* Window label */}
-        <Text style={styles.windowLabel}>
-          Past {PAST_HOURS}h · Next {FUTURE_HOURS}h
-        </Text>
+        <Text style={styles.windowLabel}>Today · Next {FUTURE_HOURS}h</Text>
 
-        {/* Overdue section */}
-        {overdue.length > 0 && (
+        {/* Overdue + missed section */}
+        {actionable.length > 0 && (
           <View style={styles.overdueBanner}>
             <View style={styles.overdueBannerHeader}>
               <Text style={styles.overdueBannerTitle}>
-                {overdue.length} overdue {overdue.length === 1 ? 'task' : 'tasks'}
+                {actionable.length} {actionable.length === 1 ? 'task needs' : 'tasks need'}{' '}
+                attention
               </Text>
               <Pressable
                 style={({ pressed }) => [styles.catchUpBtn, pressed && styles.catchUpBtnPressed]}
                 onPress={() => setCatchUpSheetVisible(true)}
               >
-                <Text style={styles.catchUpBtnText}>Catch up</Text>
+                <Text style={styles.catchUpBtnText}>Mark all as done</Text>
               </Pressable>
             </View>
-            {overdue.map((item) => (
+            {actionable.map((item) => (
               <TaskCard
                 key={item.key}
                 item={item}
@@ -379,11 +389,42 @@ export default function TodayScreen() {
           </View>
         )}
 
+        {/* Upcoming */}
+        {upcoming.length > 0 && (
+          <>
+            <SectionHeader title="Upcoming" />
+            {upcomingVisible.map((item, idx, visible) => (
+              <View key={item.key} style={styles.spineRow}>
+                <View style={styles.spineColumn}>
+                  <View style={[styles.spineDot, styles.spineDotUpcoming]} />
+                  {idx < visible.length - 1 && <View style={styles.spineLine} />}
+                </View>
+                <View style={styles.cardWrapper}>
+                  <TaskCard item={item} onRecord={handleItemTap} />
+                </View>
+              </View>
+            ))}
+            {upcoming.length > upcomingPreview.length && (
+              <Pressable
+                style={styles.viewAllBtn}
+                onPress={() => setUpcomingExpanded((expanded) => !expanded)}
+              >
+                <Text style={styles.viewAllBtnText}>
+                  {upcomingExpanded ? 'Show less' : `View all ${upcoming.length} upcoming today`}
+                </Text>
+              </Pressable>
+            )}
+          </>
+        )}
+
         {/* Earlier today */}
         {earlierToday.length > 0 && (
           <>
             <SectionHeader title="Earlier today" />
-            {earlierToday.map((item, idx) => (
+            {(earlierTodayExpanded
+              ? earlierToday
+              : earlierToday.slice(0, EARLIER_TODAY_PREVIEW_COUNT)
+            ).map((item, idx, visible) => (
               <View key={item.key} style={styles.spineRow}>
                 <View style={styles.spineColumn}>
                   <View
@@ -396,31 +437,25 @@ export default function TodayScreen() {
                           : styles.spineDotMissed,
                     ]}
                   />
-                  {idx < earlierToday.length - 1 && <View style={styles.spineLine} />}
+                  {idx < visible.length - 1 && <View style={styles.spineLine} />}
                 </View>
                 <View style={styles.cardWrapper}>
                   <TaskCard item={item} onViewDetail={setDetailItem} />
                 </View>
               </View>
             ))}
-          </>
-        )}
-
-        {/* Upcoming */}
-        {upcoming.length > 0 && (
-          <>
-            <SectionHeader title="Upcoming" />
-            {upcoming.map((item, idx) => (
-              <View key={item.key} style={styles.spineRow}>
-                <View style={styles.spineColumn}>
-                  <View style={[styles.spineDot, styles.spineDotUpcoming]} />
-                  {idx < upcoming.length - 1 && <View style={styles.spineLine} />}
-                </View>
-                <View style={styles.cardWrapper}>
-                  <TaskCard item={item} onRecord={handleItemTap} />
-                </View>
-              </View>
-            ))}
+            {earlierToday.length > EARLIER_TODAY_PREVIEW_COUNT && (
+              <Pressable
+                style={styles.viewAllBtn}
+                onPress={() => setEarlierTodayExpanded((expanded) => !expanded)}
+              >
+                <Text style={styles.viewAllBtnText}>
+                  {earlierTodayExpanded
+                    ? 'Show less'
+                    : `View all ${earlierToday.length} earlier today`}
+                </Text>
+              </Pressable>
+            )}
           </>
         )}
 
@@ -450,7 +485,7 @@ export default function TodayScreen() {
         onDismiss={() => setPRNSheetVisible(false)}
       />
       <BulkCatchUpSheet
-        items={overdue}
+        items={actionable}
         visible={catchUpSheetVisible}
         isLoading={isBulkPending}
         onConfirm={handleBulkCatchUp}
@@ -538,6 +573,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+
+  viewAllBtn: { alignItems: 'center', paddingVertical: 10, marginTop: 2 },
+  viewAllBtnText: { fontSize: 13, fontWeight: '600', color: '#2563eb' },
 
   spineRow: { flexDirection: 'row', alignItems: 'stretch', gap: 10, marginBottom: 2 },
   spineColumn: { alignItems: 'center', paddingTop: 14, width: 12 },

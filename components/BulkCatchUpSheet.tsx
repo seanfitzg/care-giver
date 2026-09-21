@@ -54,9 +54,9 @@ export function BulkCatchUpSheet({ items, visible, isLoading, onConfirm, onDismi
         >
           <View style={styles.sheet}>
             <View style={styles.handle} />
-            <Text style={styles.title}>Catch Up</Text>
+            <Text style={styles.title}>Mark all as done</Text>
             <Text style={styles.subtitle}>
-              Mark {items.length} overdue {items.length === 1 ? 'item' : 'items'} as done
+              Mark {items.length} {items.length === 1 ? 'item' : 'items'} as done
             </Text>
 
             <ScrollView style={styles.itemList} showsVerticalScrollIndicator={false}>

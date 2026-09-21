@@ -115,7 +115,7 @@ function LogCard({
           )}
           {entry.bulk_confirmed && (
             <View style={[styles.badge, styles.badgeCatchUp]}>
-              <Text style={[styles.badgeText, { color: '#b45309' }]}>Catch-up</Text>
+              <Text style={[styles.badgeText, { color: '#b45309' }]}>Bulk</Text>
             </View>
           )}
           <View style={[styles.badge, { backgroundColor: statusBadge.bg }]}>

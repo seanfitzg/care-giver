@@ -47,9 +47,9 @@ export type FetchedTimeline = {
   carerNames: Record<string, string>;
 };
 
-// Configurable window defaults — replace with per-user preferences once a
-// preferences table exists.
-export const PAST_HOURS = 2;
+// Configurable window default — replace with per-user preferences once a
+// preferences table exists. Only bounds how far ahead 'upcoming' items show;
+// overdue/done/missed/skipped items always show for the full day.
 export const FUTURE_HOURS = 6;
 
 function todayBounds() {
@@ -66,30 +66,41 @@ function scheduledTimeToday(timeOfDay: string): Date {
   return new Date(start.getTime() + (h * 60 + m) * 60_000);
 }
 
+// The latest event wins — a carer-recorded 'completed' event (which may be
+// logged well after the overdue window closes, e.g. a late catch-up) always
+// overrides an earlier cron-inserted 'missed' event for the same item.
+function buildLatestEventMap(todayEvents: EventLogRow[]): Map<string, EventLogRow> {
+  const latestByItem = new Map<string, EventLogRow>();
+  for (const e of todayEvents) {
+    if (!e.scheduled_item_id) continue;
+    const existing = latestByItem.get(e.scheduled_item_id);
+    if (!existing || e.occurred_at > existing.occurred_at) {
+      latestByItem.set(e.scheduled_item_id, e);
+    }
+  }
+  return latestByItem;
+}
+
 function computeStatus(
   scheduledAt: Date,
-  scheduledItemId: string,
   overdueWindow: number,
-  todayEvents: EventLogRow[],
+  latestEvent: EventLogRow | null,
   now: Date,
-  earliestMs: number,
+  isCompulsory: boolean,
 ): ItemStatus {
-  const scheduledMs = scheduledAt.getTime();
-  const windowEndMs = scheduledMs + overdueWindow * 60_000;
-  const match = todayEvents.find((e) => {
-    if (e.scheduled_item_id !== scheduledItemId) return false;
-    const eMs = new Date(e.occurred_at).getTime();
-    return eMs >= earliestMs && eMs <= windowEndMs;
-  });
-
-  if (match) {
-    if (match.status === 'completed') return 'done';
-    if (match.status === 'skipped') return 'skipped';
+  if (latestEvent) {
+    if (latestEvent.status === 'completed') return 'done';
+    if (latestEvent.status === 'skipped') return 'skipped';
     return 'missed';
   }
 
+  const scheduledMs = scheduledAt.getTime();
+  const windowEndMs = scheduledMs + overdueWindow * 60_000;
   const nowMs = now.getTime();
-  if (nowMs > windowEndMs) return 'missed';
+  // Only compulsory items are ever auto-marked missed (mirrors
+  // mark_missed_events() in the DB) — non-compulsory items stay 'overdue'
+  // indefinitely until completed or skipped.
+  if (nowMs > windowEndMs) return isCompulsory ? 'missed' : 'overdue';
   if (nowMs >= scheduledMs) return 'overdue';
   return 'upcoming';
 }
@@ -99,47 +110,24 @@ export function buildTimelineItems(
   todayEvents: EventLogRow[],
   now: Date,
   carerNames: Record<string, string> = {},
-  pastHours = PAST_HOURS,
-  futureHours = FUTURE_HOURS,
 ): TimelineItem[] {
-  const windowStart = new Date(now.getTime() - pastHours * 3_600_000);
-  const windowEnd = new Date(now.getTime() + futureHours * 3_600_000);
   const items: TimelineItem[] = [];
-
-  const dayStartMs = todayBounds().start.getTime();
+  const latestEventByItem = buildLatestEventMap(todayEvents);
 
   for (const row of scheduledItems) {
     if (!row.time_of_day) continue;
     const scheduledAt = scheduledTimeToday(row.time_of_day);
-    const windowEndMs = scheduledAt.getTime() + row.overdue_window_minutes * 60_000;
-
+    const latest = latestEventByItem.get(row.id) ?? null;
     const status = computeStatus(
       scheduledAt,
-      row.id,
       row.overdue_window_minutes,
-      todayEvents,
+      latest,
       now,
-      dayStartMs,
+      row.is_compulsory,
     );
 
-    const inWindow =
-      status === 'overdue' || (scheduledAt >= windowStart && scheduledAt <= windowEnd);
-    if (!inWindow) continue;
-
-    let completedByName: string | undefined;
-    if (status === 'done') {
-      const completionEvent = todayEvents.find(
-        (e) =>
-          e.scheduled_item_id === row.id &&
-          e.status === 'completed' &&
-          e.carer_id != null &&
-          new Date(e.occurred_at).getTime() >= dayStartMs &&
-          new Date(e.occurred_at).getTime() <= windowEndMs,
-      );
-      if (completionEvent?.carer_id) {
-        completedByName = carerNames[completionEvent.carer_id];
-      }
-    }
+    const completedByName =
+      status === 'done' && latest?.carer_id ? carerNames[latest.carer_id] : undefined;
 
     items.push({
       key: `${row.id}_${scheduledAt.getTime()}`,

@@ -158,7 +158,7 @@ Deno.test('item past threshold with skipped entry → no missed entry', async ()
 });
 
 Deno.test(
-  'non-compulsory item past threshold → missed entry written (distinguishable via is_compulsory)',
+  'non-compulsory item past threshold → no missed entry (stays overdue indefinitely)',
   async () => {
     const recipientId = await seedRecipient();
     try {
@@ -172,19 +172,10 @@ Deno.test(
 
       const result = await runMarkMissed();
       const inserted = result.filter((r) => r.item_id === itemId);
-      assertEquals(inserted.length, 1, 'non-compulsory items still get a missed entry');
+      assertEquals(inserted.length, 0, 'non-compulsory items are never auto-marked missed');
 
-      // Verify the scheduled item's is_compulsory flag is readable for distinction
-      const { data: item } = await db
-        .from('scheduled_items')
-        .select('is_compulsory')
-        .eq('id', itemId)
-        .single();
-      assertEquals(
-        item?.is_compulsory,
-        false,
-        'is_compulsory = false distinguishes supplement in log',
-      );
+      const count = await countMissedEvents(itemId);
+      assertEquals(count, 0);
     } finally {
       await cleanup(recipientId);
     }

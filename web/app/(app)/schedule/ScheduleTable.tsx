@@ -44,7 +44,7 @@ const tdStyle: React.CSSProperties = {
 
 export default function ScheduleTable({ careRecipientId, userId, initialItems, canManage }: Props) {
   const [items, setItems] = useState<ScheduledItemFull[]>(initialItems);
-  const [sortKey, setSortKey] = useState<SortKey>('name');
+  const [sortKey, setSortKey] = useState<SortKey>('time_of_day');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [formItem, setFormItem] = useState<ScheduledItemFull | null | undefined>(undefined);
   const [deleteItem, setDeleteItem] = useState<ScheduledItemFull | null>(null);
