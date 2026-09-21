@@ -27,6 +27,7 @@ type CarerRow = {
   user_id: string;
   role: 'admin' | UserRole;
   email: string | null;
+  name: string | null;
 };
 
 async function fetchCarers(careRecipientId: string): Promise<CarerRow[]> {
@@ -235,6 +236,7 @@ export default function AdminScreen() {
             return (
               <View style={styles.row}>
                 <View style={styles.rowInfo}>
+                  <Text style={styles.rowName}>{item.name ?? item.email ?? item.user_id}</Text>
                   <Text style={styles.rowEmail}>{item.email ?? item.user_id}</Text>
                   <Text style={styles.rowRole}>{roleLabel(item.role)}</Text>
                 </View>
@@ -390,7 +392,8 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   rowInfo: { flex: 1 },
-  rowEmail: { fontSize: 14, fontWeight: '500', color: '#111827' },
+  rowName: { fontSize: 14, fontWeight: '600', color: '#111827' },
+  rowEmail: { fontSize: 12, color: '#6b7280', marginTop: 2 },
   rowRole: { fontSize: 12, color: '#6b7280', marginTop: 2 },
   rowActions: { flexDirection: 'row', gap: 8 },
   actionButton: {

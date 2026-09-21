@@ -5,6 +5,7 @@ export interface CarerRow {
   user_id: string;
   role: CarerUserRole;
   email: string | null;
+  name: string | null;
   last_sign_in_at: string | null;
 }
 
