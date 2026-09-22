@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 `care-giver` — multi-tenant care coordination app for people with complex medical needs.
 
-**Stack:** Expo 55 (React Native + TypeScript) · Supabase (Postgres + Auth + Realtime + Edge Functions) · React Query · Expo Router
+**Stack:** Expo 57 (React Native + TypeScript) · Supabase (Postgres + Auth + Realtime + Edge Functions) · React Query · Expo Router
 
 **Key constraints (non-negotiable):**
 

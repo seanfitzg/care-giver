@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -31,13 +31,14 @@ export function PRNMedicationSheet({
 }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
-
-  useEffect(() => {
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
     if (!visible) {
       setSelectedId(null);
       setNotes('');
     }
-  }, [visible]);
+  }
 
   function handleConfirm() {
     if (!selectedId) return;
@@ -47,7 +48,7 @@ export function PRNMedicationSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.container}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onDismiss} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.sheetWrapper}

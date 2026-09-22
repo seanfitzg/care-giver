@@ -252,7 +252,7 @@ export default function TodayScreen() {
 
   // By default "Upcoming" is capped to the next FUTURE_HOURS so the list
   // stays short; "View all" reveals the rest of today's scheduled items.
-  const upcomingCutoff = new Date(Date.now() + FUTURE_HOURS * 3_600_000);
+  const upcomingCutoff = new Date(new Date().getTime() + FUTURE_HOURS * 3_600_000);
   const upcomingPreview = upcoming.filter((i) => i.scheduledAt <= upcomingCutoff);
   const upcomingVisible = upcomingExpanded ? upcoming : upcomingPreview;
 
@@ -498,7 +498,7 @@ export default function TodayScreen() {
         onRequestClose={() => setDetailItem(null)}
       >
         <View style={styles.detailOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setDetailItem(null)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setDetailItem(null)} />
           <View style={styles.detailSheet}>
             <View style={styles.detailHandle} />
             {detailItem && (

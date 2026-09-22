@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -39,15 +39,16 @@ function formatTime(date: Date): string {
 
 export function BulkCatchUpSheet({ items, visible, isLoading, onConfirm, onDismiss }: Props) {
   const [notes, setNotes] = useState('');
-
-  useEffect(() => {
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
     if (!visible) setNotes('');
-  }, [visible]);
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.container}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onDismiss} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.sheetWrapper}

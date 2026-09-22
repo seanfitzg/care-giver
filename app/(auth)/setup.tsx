@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -20,41 +20,43 @@ export default function SetupScreen() {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
-  const [confirmationType, setConfirmationType] = useState<'invite' | 'signup' | null>(null);
   const router = useRouter();
   const url = Linking.useURL();
 
+  const confirmationType = useMemo(() => {
+    const fragment = url?.split('#')[1];
+    const type = fragment ? new URLSearchParams(fragment).get('type') : null;
+    return type === 'invite' || type === 'signup' ? type : null;
+  }, [url]);
+
   // Exchange invite/signup tokens from the deep-link URL fragment for a session.
   useEffect(() => {
-    if (!url) return;
+    if (!url || !confirmationType) return;
     const fragment = url.split('#')[1];
     if (!fragment) return;
     const params = new URLSearchParams(fragment);
     const accessToken = params.get('access_token');
     const refreshToken = params.get('refresh_token');
-    const type = params.get('type');
-    if ((type === 'invite' || type === 'signup') && accessToken && refreshToken) {
-      setConfirmationType(type);
-      supabase.auth
-        .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error }) => {
-          if (error) {
-            Alert.alert(
-              type === 'signup'
-                ? 'Invalid or expired confirmation link'
-                : 'Invalid or expired invite link',
-              error.message,
-            );
-          } else if (type === 'signup') {
-            // A signed-up User already set their password at sign-up time —
-            // just finish establishing the session and route into the app.
-            router.replace('/(tabs)');
-          } else {
-            setSessionReady(true);
-          }
-        });
-    }
-  }, [url, router]);
+    if (!accessToken || !refreshToken) return;
+    supabase.auth
+      .setSession({ access_token: accessToken, refresh_token: refreshToken })
+      .then(({ error }) => {
+        if (error) {
+          Alert.alert(
+            confirmationType === 'signup'
+              ? 'Invalid or expired confirmation link'
+              : 'Invalid or expired invite link',
+            error.message,
+          );
+        } else if (confirmationType === 'signup') {
+          // A signed-up User already set their password at sign-up time —
+          // just finish establishing the session and route into the app.
+          router.replace('/(tabs)');
+        } else {
+          setSessionReady(true);
+        }
+      });
+  }, [url, confirmationType, router]);
 
   const handleSetPassword = async () => {
     const validationError = validatePasswordConfirmation(password, confirm);
