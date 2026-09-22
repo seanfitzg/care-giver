@@ -492,7 +492,7 @@ export default function TodayTimeline({
             const { scheduledItem: item, event, status } = entry;
             const colors = STATUS_COLORS[status];
             const carer = event?.carer_id ? carerMap.get(event.carer_id) : null;
-            const recordable = status === 'pending' || status === 'overdue';
+            const recordable = status === 'pending' || status === 'overdue' || status === 'missed';
             const hidden = isUpcomingHidden(entry);
 
             function handleActivate() {
