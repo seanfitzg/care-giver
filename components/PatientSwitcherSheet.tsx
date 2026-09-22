@@ -23,7 +23,7 @@ export function PatientSwitcherSheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onDismiss}>
       <View style={styles.container}>
-        <Pressable style={StyleSheet.absoluteFillObject} onPress={onDismiss} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />
         <View style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>Switch patient</Text>

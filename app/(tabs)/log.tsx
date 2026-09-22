@@ -308,7 +308,7 @@ export default function LogScreen() {
         onRequestClose={() => setSelectedEntry(null)}
       >
         <View style={styles.detailOverlay}>
-          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSelectedEntry(null)} />
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setSelectedEntry(null)} />
           <View style={styles.detailSheet}>
             <View style={styles.detailHandle} />
             {selectedEntry &&

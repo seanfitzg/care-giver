@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -28,13 +28,16 @@ export function PRNMedicationFormModal({
   const isEdit = !!medication;
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
-
-  useEffect(() => {
+  const [prevVisible, setPrevVisible] = useState(visible);
+  const [prevMedication, setPrevMedication] = useState(medication);
+  if (visible !== prevVisible || medication !== prevMedication) {
+    setPrevVisible(visible);
+    setPrevMedication(medication);
     if (visible) {
       setName(medication?.name ?? '');
       setNotes(medication?.notes ?? '');
     }
-  }, [visible, medication]);
+  }
 
   function handleSave() {
     if (!name.trim()) return;
