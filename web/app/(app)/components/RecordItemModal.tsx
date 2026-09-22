@@ -12,6 +12,8 @@ const ACCENT: Record<ScheduledItem['type'], string> = {
   activity: '#16a34a',
 };
 
+type RecordStatus = 'completed' | 'skipped';
+
 interface Props {
   item: ScheduledItem;
   careRecipientId: string;
@@ -29,12 +31,12 @@ export default function RecordItemModal({
 }: Props) {
   const titleId = useId();
   const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState<'completed' | 'skipped' | null>(null);
+  const [submittingStatus, setSubmittingStatus] = useState<RecordStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const accent = ACCENT[item.type];
 
-  async function handleSubmit(status: 'completed' | 'skipped') {
-    setSubmitting(status);
+  async function handleSubmit(status: RecordStatus) {
+    setSubmittingStatus(status);
     setError(null);
     const supabase = createClient();
     const { data, error: insertError } = await supabase
@@ -52,7 +54,7 @@ export default function RecordItemModal({
       .single();
 
     if (insertError || !data) {
-      setSubmitting(null);
+      setSubmittingStatus(null);
       setError('Could not record this — please try again.');
       return;
     }
@@ -101,32 +103,43 @@ export default function RecordItemModal({
       {error && <p style={{ color: '#dc2626', fontSize: 13, marginTop: 10 }}>{error}</p>}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 18 }}>
-        <button type="button" onClick={onClose} style={{ ...secondaryBtnStyle, flex: '1 1 auto' }}>
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={submittingStatus !== null}
+          style={{
+            ...secondaryBtnStyle,
+            flex: '1 1 auto',
+            opacity: submittingStatus !== null ? 0.7 : 1,
+          }}
+        >
           Cancel
         </button>
         <button
           type="button"
           onClick={() => handleSubmit('skipped')}
-          disabled={submitting !== null}
+          disabled={submittingStatus !== null}
           style={{
             ...secondaryBtnStyle,
             flex: '1 1 auto',
-            opacity: submitting !== null ? 0.7 : 1,
+            color: '#dc2626',
+            borderColor: '#fecaca',
+            opacity: submittingStatus !== null ? 0.7 : 1,
           }}
         >
-          {submitting === 'skipped' ? 'Recording…' : 'Mark as not done'}
+          {submittingStatus === 'skipped' ? 'Recording…' : 'Mark as not done'}
         </button>
         <button
           type="button"
           onClick={() => handleSubmit('completed')}
-          disabled={submitting !== null}
+          disabled={submittingStatus !== null}
           style={{
             ...primaryBtnStyle(accent),
             flex: '1 1 100%',
-            opacity: submitting !== null ? 0.7 : 1,
+            opacity: submittingStatus !== null ? 0.7 : 1,
           }}
         >
-          {submitting === 'completed' ? 'Recording…' : 'Record as done'}
+          {submittingStatus === 'completed' ? 'Recording…' : 'Record as done'}
         </button>
       </div>
     </Modal>
