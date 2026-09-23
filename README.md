@@ -6,6 +6,19 @@ Care coordination app for people with complex medical needs. Multi-tenant, real-
 
 ---
 
+## Contents
+
+- [Overview](#overview)
+- [Web app](#web-app)
+- [How this was built](#how-this-was-built)
+- [Prerequisites](#prerequisites)
+- [Local development](#local-development)
+- [Project structure](#project-structure)
+- [Useful commands](#useful-commands)
+- [Supabase Studio](#supabase-studio)
+
+---
+
 ## Overview
 
 care-giver helps a team of carers (family members, professional carers, nurses) stay coordinated around the daily care of someone with complex medical needs: medications, tube feeding/nutrition, therapy activities, and more. Each care recipient has their own private team; carers are invited in and see only the recipients they've been added to.
@@ -18,16 +31,20 @@ care-giver helps a team of carers (family members, professional carers, nurses) 
 
 <table>
 <tr>
-<td align="center" width="25%"><a href="readme-images/IMG_3511.PNG"><img src="readme-images/IMG_3511.PNG" width="200"/></a><br/><sub><b>Today</b><br/>Daily tasks, with overdue items flagged</sub></td>
-<td align="center" width="25%"><a href="readme-images/IMG_3513.PNG"><img src="readme-images/IMG_3513.PNG" width="200"/></a><br/><sub><b>Schedule</b><br/>Recurring medication, nutrition & activity plan</sub></td>
-<td align="center" width="25%"><a href="readme-images/IMG_3516.PNG"><img src="readme-images/IMG_3516.PNG" width="200"/></a><br/><sub><b>Edit Scheduled Medication</b><br/>Compulsory vs. supplement, days of week</sub></td>
-<td align="center" width="25%"><a href="readme-images/IMG_3517.PNG"><img src="readme-images/IMG_3517.PNG" width="200"/></a><br/><sub><b>Add scheduled item</b><br/>Add a medication, nutrition, or activity</sub></td>
+<td align="center" width="50%"><img src="readme-images/IMG_3511.PNG" width="100%"/><br/><sub><b>Today</b><br/>Daily tasks, with overdue items flagged</sub></td>
+<td align="center" width="50%"><img src="readme-images/IMG_3513.PNG" width="100%"/><br/><sub><b>Schedule</b><br/>Recurring medication, nutrition & activity plan</sub></td>
 </tr>
 <tr>
-<td align="center"><a href="readme-images/IMG_3515.PNG"><img src="readme-images/IMG_3515.PNG" width="200"/></a><br/><sub><b>Choose a patient</b><br/>Switch between care recipients / teams</sub></td>
-<td align="center"><a href="readme-images/IMG_3514.PNG"><img src="readme-images/IMG_3514.PNG" width="200"/></a><br/><sub><b>Log</b><br/>History of completed and missed care</sub></td>
-<td align="center"><a href="readme-images/IMG_3512.PNG"><img src="readme-images/IMG_3512.PNG" width="200"/></a><br/><sub><b>Admin</b><br/>Invite carers, manage roles & access</sub></td>
-<td align="center"><a href="readme-images/IMG_3518.PNG"><img src="readme-images/IMG_3518.PNG" width="200"/></a><br/><sub><b>Add Nutrition</b><br/>Feeding type, bolus timing & rest period</sub></td>
+<td align="center"><img src="readme-images/IMG_3516.PNG" width="100%"/><br/><sub><b>Edit Scheduled Medication</b><br/>Compulsory vs. supplement, days of week</sub></td>
+<td align="center"><img src="readme-images/IMG_3517.PNG" width="100%"/><br/><sub><b>Add scheduled item</b><br/>Add a medication, nutrition, or activity</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/IMG_3515.PNG" width="100%"/><br/><sub><b>Choose a patient</b><br/>Switch between care recipients / teams</sub></td>
+<td align="center"><img src="readme-images/IMG_3514.PNG" width="100%"/><br/><sub><b>Log</b><br/>History of completed and missed care</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/IMG_3512.PNG" width="100%"/><br/><sub><b>Admin</b><br/>Invite carers, manage roles & access</sub></td>
+<td align="center"><img src="readme-images/IMG_3518.PNG" width="100%"/><br/><sub><b>Add Nutrition</b><br/>Feeding type, bolus timing & rest period</sub></td>
 </tr>
 </table>
 
@@ -39,12 +56,22 @@ The same care team also has a web dashboard (in `web/`) for schedule and team ma
 
 <table>
 <tr>
-<td align="center" width="16%"><a href="readme-images/web-today.png"><img src="readme-images/web-today.png" width="220"/></a><br/><sub><b>Today</b><br/>Daily tasks, overdue and upcoming</sub></td>
-<td align="center" width="16%"><a href="readme-images/web-schedule.png"><img src="readme-images/web-schedule.png" width="220"/></a><br/><sub><b>Schedule</b><br/>Full weekly plan in table form</sub></td>
-<td align="center" width="16%"><a href="readme-images/web-add-scheduled-item.png"><img src="readme-images/web-add-scheduled-item.png" width="220"/></a><br/><sub><b>New scheduled item</b><br/>Add a medication, nutrition, or activity entry</sub></td>
-<td align="center" width="16%"><a href="readme-images/web-record-medication.png"><img src="readme-images/web-record-medication.png" width="220"/></a><br/><sub><b>Record medication</b><br/>Mark a dose done or not done, with notes</sub></td>
-<td align="center" width="16%"><a href="readme-images/web-care-log.png"><img src="readme-images/web-care-log.png" width="220"/></a><br/><sub><b>Care log</b><br/>Full history, filterable by date and event type</sub></td>
-<td align="center" width="16%"><a href="readme-images/web-care-team.png"><img src="readme-images/web-care-team.png" width="220"/></a><br/><sub><b>Care team</b><br/>Manage carer roles and as-needed medications</sub></td>
+<td align="center" width="100%"><img src="readme-images/web-today.png" width="100%"/><br/><sub><b>Today</b><br/>Daily tasks, overdue and upcoming</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/web-schedule.png" width="100%"/><br/><sub><b>Schedule</b><br/>Full weekly plan in table form</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/web-add-scheduled-item.png" width="100%"/><br/><sub><b>New scheduled item</b><br/>Add a medication, nutrition, or activity entry</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/web-record-medication.png" width="100%"/><br/><sub><b>Record medication</b><br/>Mark a dose done or not done, with notes</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/web-care-log.png" width="100%"/><br/><sub><b>Care log</b><br/>Full history, filterable by date and event type</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="readme-images/web-care-team.png" width="100%"/><br/><sub><b>Care team</b><br/>Manage carer roles and as-needed medications</sub></td>
 </tr>
 </table>
 
