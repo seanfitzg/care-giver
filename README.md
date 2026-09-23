@@ -52,7 +52,7 @@ care-giver helps a team of carers (family members, professional carers, nurses) 
 
 ## Web app
 
-The same care team also has a web dashboard (in `web/`) for schedule and team management from a desktop browser.
+The same care team also has a web dashboard (in `web/`) — Today, schedule, recording sessions, care log, and team admin, all from a desktop browser.
 
 <table>
 <tr>
@@ -120,9 +120,9 @@ npm run supabase:start
 On first run this pulls the Supabase Docker images (~1 GB). Once running it prints your local API URL and anon key:
 
 ```
-API URL: http://127.0.0.1:54321
+API URL: http://127.0.0.1:54421
 anon key: eyJ...
-Studio: http://127.0.0.1:54323
+Studio: http://127.0.0.1:54423
 ```
 
 ### 3. Configure environment
@@ -134,17 +134,47 @@ cp .env.example .env
 Edit `.env` and paste in the `anon key` printed above:
 
 ```
-EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+EXPO_PUBLIC_SUPABASE_URL=http://127.0.0.1:54421
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 ```
 
-### 4. Run the app
+### 4. Run the mobile app
 
 ```bash
 npm start
 ```
 
 - Press `i` for iOS simulator, `a` for Android emulator, `w` for web, or scan the QR code with Expo Go.
+
+### 5. Run the web dashboard (optional)
+
+The web app (in `web/`) has its own dependencies and env file, pointing at the same local Supabase instance.
+
+```bash
+cd web
+npm install
+cp .env.example .env
+```
+
+Edit `web/.env` with the same API URL and anon key as above (note the `NEXT_PUBLIC_` prefix instead of `EXPO_PUBLIC_`), plus the `service_role` key from the `supabase start` output for `SUPABASE_SERVICE_ROLE_KEY`:
+
+```
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54421
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+```
+
+Then, from the repo root:
+
+```bash
+npm run next:dev
+```
+
+Or run both the Android app and the web dashboard together:
+
+```bash
+npm run all
+```
 
 ### Stop Supabase
 
@@ -156,42 +186,66 @@ npm run supabase:stop
 
 ## Project structure
 
+The mobile app lives at the repo root (Expo Router); the web dashboard is a separate Next.js app in `web/`. Both talk to the same Supabase project.
+
 ```
-app/
-  _layout.tsx          # Root layout: QueryClientProvider + Auth + Duty providers
-  (tabs)/
-    _layout.tsx        # Bottom-tab navigator
-    index.tsx          # Today screen
-    feed.tsx           # Feeding session screen
-    on-duty.tsx        # Duty management screen
-    log.tsx            # Care history screen
+app/                    # Expo Router screens (mobile)
+  _layout.tsx           # Root layout: QueryClientProvider + Auth provider
+  (auth)/                 login.tsx, signup.tsx, setup.tsx
+  (patient)/               picker.tsx, pending.tsx — choose/await a care team
+  (setup)/                 create-recipient.tsx — start a brand-new care team
+  (tabs)/                  index.tsx (Today), schedule.tsx, log.tsx
+  admin/                   invite carers, manage roles & access
+  nutrition-session.tsx   # Bolus/oral feeding session runner
 contexts/
-  AuthContext.tsx      # Auth state (session, user, signOut)
-  DutyContext.tsx      # On-duty state (checkIn, checkOut)
+  AuthContext.tsx        # Auth state (session, user, signOut)
 lib/
-  supabase.ts          # Supabase client
+  supabase.ts            # Supabase client
+  roles.ts, validation.ts
+
+web/                     # Next.js dashboard (App Router)
+  app/
+    login/, signup/, setup/        # Auth
+    (patient)/                     # Picker, pending, create-recipient
+    (app)/
+      page.tsx                     # Today
+      schedule/, log/, admin/      # Schedule, care log, team admin
+      session/nutrition/           # Nutrition session runner
+      components/                  # Shared UI (modals, timeline, sidebar)
+    actions/                       # Server actions (auth, patients)
+  lib/
+    supabase/client.ts, server.ts  # Browser and server Supabase clients
+
 supabase/
-  config.toml          # Local Supabase configuration
-  migrations/          # Database migrations (added in issue #2)
-  seed.sql             # Development seed data
+  config.toml            # Local Supabase configuration (custom ports)
+  migrations/            # Database migrations, run in order
+  seed.sql               # Development seed data
+scripts/
+  reset-all-data.js      # Wipes and reseeds local/remote data
 ```
 
 ---
 
 ## Useful commands
 
-| Command                  | Description                              |
-| ------------------------ | ---------------------------------------- |
-| `npm start`              | Start the Expo dev server                |
-| `npm run type-check`     | TypeScript type-check (no emit)          |
-| `npm run lint`           | ESLint                                   |
-| `npm run supabase:start` | Start local Supabase stack               |
-| `npm run supabase:stop`  | Stop local Supabase stack                |
-| `npx supabase db reset`  | Reset DB and re-run migrations + seed    |
-| `npx supabase db diff`   | Diff schema changes into a new migration |
+| Command                  | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `npm start`              | Start the Expo dev server                    |
+| `npm run next:dev`       | Start the Next.js web dashboard              |
+| `npm run all`            | Run Android + web dashboard together         |
+| `npm run type-check`     | TypeScript type-check (no emit) — mobile app |
+| `npm run lint`           | ESLint — mobile app                          |
+| `npm run format`         | Prettier — format the whole repo             |
+| `npm test`               | Run DB tests + edge function tests           |
+| `npm run supabase:start` | Start local Supabase stack                   |
+| `npm run supabase:stop`  | Stop local Supabase stack                    |
+| `npx supabase db reset`  | Reset DB and re-run migrations + seed        |
+| `npx supabase db diff`   | Diff schema changes into a new migration     |
+
+The web dashboard (in `web/`) has its own `type-check` and `lint` scripts — run with `npm --prefix web run <script>`.
 
 ---
 
 ## Supabase Studio
 
-When the local stack is running, the Studio is at [http://127.0.0.1:54323](http://127.0.0.1:54323). Use it to inspect tables, run queries, and manage auth users during development.
+When the local stack is running, the Studio is at [http://127.0.0.1:54423](http://127.0.0.1:54423). Use it to inspect tables, run queries, and manage auth users during development.
