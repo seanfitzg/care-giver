@@ -272,10 +272,18 @@ export default function NutritionSessionScreen() {
 
           {startError ? <Text style={styles.endErrorText}>{startError}</Text> : null}
 
-          <Pressable style={styles.primaryBtn} onPress={handleStartBolusSession}>
-            <Ionicons name="play-circle-outline" size={20} color="#fff" />
-            <Text style={styles.primaryBtnText}>Start session</Text>
-          </Pressable>
+          <View style={styles.prestartActionsRow}>
+            <Pressable style={styles.cancelBtn} onPress={() => goBack()}>
+              <Text style={styles.cancelBtnText}>Cancel</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.primaryBtn, styles.primaryBtnFlex]}
+              onPress={handleStartBolusSession}
+            >
+              <Ionicons name="play-circle-outline" size={20} color="#fff" />
+              <Text style={styles.primaryBtnText}>Start session</Text>
+            </Pressable>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     );
@@ -659,6 +667,19 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  primaryBtnFlex: { flex: 1, marginTop: 0 },
+  prestartActionsRow: { flexDirection: 'row', gap: 12, marginTop: 8 },
+  cancelBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    paddingVertical: 16,
+    borderWidth: 2,
+    borderColor: '#d1d5db',
+  },
+  cancelBtnText: { fontSize: 16, fontWeight: '700', color: '#374151' },
   endBtn: {
     alignItems: 'center',
     justifyContent: 'center',

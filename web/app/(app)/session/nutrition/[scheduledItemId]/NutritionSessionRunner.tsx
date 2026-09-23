@@ -418,18 +418,28 @@ export default function NutritionSessionRunner({
           {startError && (
             <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{startError}</p>
           )}
-          <button
-            type="button"
-            onClick={handleStartBolusSession}
-            disabled={startingBolus}
-            style={{
-              ...primaryBtnStyle('#2563eb'),
-              width: '100%',
-              opacity: startingBolus ? 0.7 : 1,
-            }}
-          >
-            {startingBolus ? 'Starting…' : 'Start session'}
-          </button>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              disabled={startingBolus}
+              style={{ ...secondaryBtnStyle, flex: 1, opacity: startingBolus ? 0.7 : 1 }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleStartBolusSession}
+              disabled={startingBolus}
+              style={{
+                ...primaryBtnStyle('#2563eb'),
+                flex: 1,
+                opacity: startingBolus ? 0.7 : 1,
+              }}
+            >
+              {startingBolus ? 'Starting…' : 'Start session'}
+            </button>
+          </div>
         </div>
       )}
 
