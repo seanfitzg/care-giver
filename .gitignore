@@ -15,3 +15,4 @@ yarn-debug.*
 yarn-error.*
 expo-env.d.ts
 notes.txt
+.DS_Store
