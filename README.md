@@ -2,7 +2,7 @@
 
 Care coordination app for people with complex medical needs. Multi-tenant, real-time, invite-only.
 
-**Stack:** Expo (React Native + TypeScript) · Supabase · React Query
+**Stack:** Expo (React Native + TypeScript) for mobile · Next.js (React + TypeScript) for the web dashboard · Supabase · React Query
 
 ---
 
